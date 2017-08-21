@@ -87,11 +87,13 @@ class Element(object):
     def parent(self):
         return self._element.parent
 
-    def find_element(self, by=By.ID, value=None):
-        return self._element.find_element(by=by, value=value)
+    def find_element(self, value=None, *, by=By.CSS_SELECTOR):
+        new_element = self._element.find_element(by=by, value=value)
+        return Element(by=by, locator=value, web_element=new_element)
 
-    def find_elements(self, by=By.ID, value=None):
-        return self._element.find_elements(by=by, value=value)
+    def find_elements(self, value=None, *, by=By.CSS_SELECTOR):
+        new_elements = self._element.find_elements(by=by, value=value)
+        return [Element(by=by, locator=value, web_element=e) for e in new_elements]
 
     # Other methods
     def set_value(self, text):

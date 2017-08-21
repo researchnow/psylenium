@@ -14,6 +14,7 @@ class Page(object):
     :type driver: WebDriver
     :type elements: dict[str, Element]
     """
+
     def __init__(self, driver, url=None):
         self.driver = driver
         self.elements = {}
@@ -46,12 +47,12 @@ class Page(object):
         elements = self.driver.find_elements(by=by, value=locator)
         return [Element(by=by, locator=locator, web_element=element) for element in elements]
 
-    def element(self, locator, by=By.CSS_SELECTOR):
+    def element(self, locator: str, by=By.CSS_SELECTOR):
         """ Retrieval method for accessing Element objects on the page. It is the underlying method called by any
         property elements on Page classes; it checks its storage dict for the element in case it's already been
         accessed, and also checks if that element is still valid. If either of those checks fail, it looks up a new
         Element and stores it before returning. """
-        
+
         if self.elements.get(locator):
             try:
                 self.elements[locator].is_enabled()
@@ -66,6 +67,7 @@ class PageComponent(object):
     """ An Element container class similar to the Page class, but smaller in scope - tethered to a single HTML element
      as its root instead of the DOM - and linked to a Page object that represents the DOM.
     """
+
     def __init__(self, *, page: Page, locator, by=By.CSS_SELECTOR):
         self.parent_page = page
         self.locator = locator
@@ -76,13 +78,15 @@ class PageComponent(object):
         """ Retrieval method for the Element that represents the root of this part of the page. """
         return self.parent_page.element(by=self.by, locator=self.locator)
 
-    def find_element(self, locator, by=By.CSS_SELECTOR):
+    def find_element(self, locator, by=By.CSS_SELECTOR, wait=True, timeout=10):
+        if wait:
+            self.parent_page.wait_for_element(by=by, locator=locator, timeout=timeout)
         element = self.get().find_element(by=by, value=locator)
-        return element
+        return Element(by=by, locator=locator, web_element=element)
 
     def find_elements(self, locator, by=By.CSS_SELECTOR):
         elements = self.get().find_elements(by=by, value=locator)
-        return elements
+        return [Element(by=by, locator=locator, web_element=element) for element in elements]
 
     def element(self, locator, by=By.CSS_SELECTOR) -> Element:
         if self.elements.get(locator):
@@ -119,6 +123,7 @@ class PageComponent(object):
 class SubComponent(PageComponent):
     """ An extension of the PageComponent class that is built for nesting components. Tied to a PageComponent parent
     instead of the overall Page. """
+
     def __init__(self, parent: PageComponent, locator, by=By.CSS_SELECTOR):
         self.parent = parent
         super().__init__(page=parent.parent_page, locator=locator, by=by)

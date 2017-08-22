@@ -6,7 +6,7 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.common.exceptions import StaleElementReferenceException
 
 from psylenium.exceptions import DriverException
-from psylenium.element import Element
+from psylenium.element import Element, check_xpath_by
 
 
 class Page(object):
@@ -25,29 +25,33 @@ class Page(object):
             raise ValueError("No URL defined for this Page class.")
         self.driver.get(self.url)
 
-    def wait_for_element(self, by, locator, timeout=10):
+    def wait_for_element(self, locator, *, by=By.CSS_SELECTOR, timeout=10):
+        by = check_xpath_by(by=by, locator=locator)
         try:
             WebDriverWait(self.driver, timeout).until(EC.visibility_of_element_located((by, locator)))
         except Exception as e:
             raise DriverException(e.__class__.__name__, str(e)) from None
 
     def element_exists(self, locator, by=By.CSS_SELECTOR):
+        by = check_xpath_by(by=by, locator=locator)
         for e in self.driver.find_elements(by=by, value=locator):
             if e.is_displayed():
                 return True
         return False
 
     def find_element(self, locator, by=By.CSS_SELECTOR, wait=True, timeout=10):
+        by = check_xpath_by(by=by, locator=locator)
         if wait:
             self.wait_for_element(by=by, locator=locator, timeout=timeout)
         element = self.driver.find_element(by=by, value=locator)
         return Element(by=by, locator=locator, web_element=element)
 
     def find_elements(self, locator, by=By.CSS_SELECTOR):
+        by = check_xpath_by(by=by, locator=locator)
         elements = self.driver.find_elements(by=by, value=locator)
         return [Element(by=by, locator=locator, web_element=element) for element in elements]
 
-    def element(self, locator: str, by=By.CSS_SELECTOR):
+    def element(self, locator: str, *, by=By.CSS_SELECTOR):
         """ Retrieval method for accessing Element objects on the page. It is the underlying method called by any
         property elements on Page classes; it checks its storage dict for the element in case it's already been
         accessed, and also checks if that element is still valid. If either of those checks fail, it looks up a new

@@ -12,6 +12,13 @@ from selenium.webdriver.common.action_chains import ActionChains
 from .exceptions import DriverException
 
 
+def check_xpath_by(*, by, locator):
+    if by == By.CSS_SELECTOR:
+        if locator.startswith("//") or locator.startswith("./") or "[contains(" in locator:
+            return By.XPATH
+    return by
+
+
 class Element(object):
     def __init__(self, by, locator, web_element: RemoteWebElement):
         self.by = by
@@ -88,10 +95,12 @@ class Element(object):
         return self._element.parent
 
     def find_element(self, value=None, *, by=By.CSS_SELECTOR):
+        by = check_xpath_by(by=by, locator=value)
         new_element = self._element.find_element(by=by, value=value)
         return Element(by=by, locator=value, web_element=new_element)
 
     def find_elements(self, value=None, *, by=By.CSS_SELECTOR):
+        by = check_xpath_by(by=by, locator=value)
         new_elements = self._element.find_elements(by=by, value=value)
         return [Element(by=by, locator=value, web_element=e) for e in new_elements]
 

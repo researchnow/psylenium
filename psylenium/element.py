@@ -20,10 +20,13 @@ def check_xpath_by(*, by, locator):
 
 
 class Element(object):
-    def __init__(self, by, locator, web_element: RemoteWebElement):
+    def __init__(self, *, by, locator, web_element: RemoteWebElement):
         self.by = by
         self.locator = locator
         self._element = web_element
+
+    def __repr__(self):
+        return f"<Element object for {self.by} locator [ {self.locator} ]>"
 
     @property
     def driver(self):

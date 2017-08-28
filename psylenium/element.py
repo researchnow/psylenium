@@ -8,8 +8,9 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support.select import Select
 
 from selenium.webdriver.common.action_chains import ActionChains
-
-from .exceptions import DriverException
+from selenium.common.exceptions import WebDriverException, TimeoutException, NoSuchElementException, \
+    StaleElementReferenceException
+from .exceptions import DriverException, TimeOutException
 
 
 def check_xpath_by(*, by, locator):
@@ -17,6 +18,36 @@ def check_xpath_by(*, by, locator):
         if locator.startswith("//") or locator.startswith("./") or "[contains(" in locator:
             return By.XPATH
     return by
+
+
+def wait_for_element(*, driver, locator, by=By.CSS_SELECTOR, timeout=10):
+    by = check_xpath_by(by=by, locator=locator)
+    try:
+        WebDriverWait(driver, timeout).until(EC.visibility_of_element_located((by, locator)))
+    except TimeoutException:
+        raise TimeOutException(by=by, locator=locator, timeout=timeout) from None
+    except Exception as e:
+        raise DriverException(e.__class__.__name__, str(e)) from None
+
+
+def wait_until_not_visible(*, driver, locator, by=By.CSS_SELECTOR, timeout=10):
+    by = check_xpath_by(by=by, locator=locator)
+    try:
+        for _ in range(timeout):
+            if not driver.find_element(by=by, value=locator).is_displayed():
+                return True
+            time.sleep(1)
+    except (NoSuchElementException, StaleElementReferenceException, TimeoutException, AttributeError):
+        return True
+    raise Exception(f"Target element ({by} locator [ {locator} ]) still visible after wait period.")
+
+
+def element_exists(*, driver, locator, by=By.CSS_SELECTOR):
+    by = check_xpath_by(by=by, locator=locator)
+    for e in driver.find_elements(by=by, value=locator):
+        if e.is_displayed():
+            return True
+    return False
 
 
 class Element(object):

@@ -1,13 +1,10 @@
-import time
 from selenium.webdriver.remote.webdriver import WebDriver
 from selenium.webdriver.common.by import By
-from selenium.webdriver.support import expected_conditions as EC
-from selenium.webdriver.support.ui import WebDriverWait
 
-from selenium.common.exceptions import StaleElementReferenceException, TimeoutException, NoSuchElementException
+from selenium.common.exceptions import StaleElementReferenceException
 
-from psylenium.exceptions import DriverException, TimeOutException
-from psylenium.element import Element, check_xpath_by
+from psylenium.exceptions import DriverException
+from psylenium.element import Element, check_xpath_by, wait_for_element, wait_until_not_visible, element_exists
 
 
 class Page(object):
@@ -27,38 +24,22 @@ class Page(object):
         self.driver.get(self.url)
 
     def wait_for_element(self, locator, *, by=By.CSS_SELECTOR, timeout=10):
-        by = check_xpath_by(by=by, locator=locator)
-        try:
-            WebDriverWait(self.driver, timeout).until(EC.visibility_of_element_located((by, locator)))
-        except TimeoutException as e:
-            raise TimeOutException(by=by, locator=locator, timeout=timeout) from None
-        except Exception as e:
-            raise DriverException(e.__class__.__name__, str(e)) from None
+        wait_for_element(driver=self.driver, by=by, locator=locator, timeout=timeout)
 
     def wait_until_not_visible(self, locator, *, by=By.CSS_SELECTOR, timeout=2):
-        by = check_xpath_by(by=by, locator=locator)
-        try:
-            for _ in range(5):
-                if not self.driver.find_element(by=by, value=locator).is_displayed():
-                    return True
-                time.sleep(1)
-        except (NoSuchElementException, StaleElementReferenceException, TimeoutException, AttributeError):
-            return True
-        raise Exception(f"Target element ({by} locator [ {locator} ]) still visible after wait period.")
-
+        return wait_until_not_visible(driver=self.driver, by=by, locator=locator, timeout=timeout)
 
     def element_exists(self, locator, by=By.CSS_SELECTOR):
-        by = check_xpath_by(by=by, locator=locator)
-        for e in self.driver.find_elements(by=by, value=locator):
-            if e.is_displayed():
-                return True
-        return False
+        return element_exists(driver=self.driver, by=by, locator=locator)
 
     def find_element(self, locator, by=By.CSS_SELECTOR, wait=True, timeout=10):
         by = check_xpath_by(by=by, locator=locator)
         if wait:
             self.wait_for_element(by=by, locator=locator, timeout=timeout)
-        element = self.driver.find_element(by=by, value=locator)
+        try:
+            element = self.driver.find_element(by=by, value=locator)
+        except Exception as e:
+            raise DriverException(e.__class__.__name__, str(e)) from None
         return Element(by=by, locator=locator, web_element=element)
 
     def find_elements(self, locator, by=By.CSS_SELECTOR):
@@ -93,12 +74,25 @@ class PageComponent(object):
         self.by = by
         self.elements = {}
 
-    def get(self):
+    @property
+    def driver(self):
+        return self.parent_page.driver
+
+    def get(self) -> Element:
         """ Retrieval method for the Element that represents the root of this part of the page. """
         return self.parent_page.element(by=self.by, locator=self.locator)
 
     def wait_for_self(self, *, timeout=10):
         return self.parent_page.wait_for_element(locator=self.locator, by=self.by, timeout=timeout)
+
+    def wait_for_element(self, locator, *, by=By.CSS_SELECTOR, timeout=10):
+        wait_for_element(driver=self.driver, by=by, locator=locator, timeout=timeout)
+
+    def wait_until_not_visible(self, locator, *, by=By.CSS_SELECTOR, timeout=2):
+        return wait_until_not_visible(driver=self.driver, by=by, locator=locator, timeout=timeout)
+
+    def element_exists(self, locator, by=By.CSS_SELECTOR):
+        return element_exists(driver=self.driver, by=by, locator=locator)
 
     def find_element(self, locator, by=By.CSS_SELECTOR, wait=True, timeout=10):
         if wait:

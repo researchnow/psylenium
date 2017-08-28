@@ -1,13 +1,14 @@
 import time
 
-from selenium.webdriver.remote.webdriver import WebElement as RemoteWebElement
+from selenium.webdriver.remote.webdriver import WebElement
+from selenium.webdriver.common.action_chains import ActionChains
 from selenium.webdriver.common.by import By
+from selenium.webdriver.common.keys import Keys
 
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support.select import Select
 
-from selenium.webdriver.common.action_chains import ActionChains
 from selenium.common.exceptions import WebDriverException, TimeoutException, NoSuchElementException, \
     StaleElementReferenceException
 from .exceptions import DriverException, TimeOutException
@@ -51,7 +52,10 @@ def element_exists(*, driver, locator, by=By.CSS_SELECTOR):
 
 
 class Element(object):
-    def __init__(self, *, by, locator, web_element: RemoteWebElement):
+    """
+    :type _element: WebElement
+    """
+    def __init__(self, by, locator, web_element: WebElement):
         self.by = by
         self.locator = locator
         self._element = web_element
@@ -73,7 +77,7 @@ class Element(object):
 
     # Wrapper methods around the actual WebElement's methods, allowing us to access them without using _element and also
     # to modify them when we need to.
-    def click(self, *, wait=True, timeout=10, offset=0):
+    def click(self, *, wait=True, timeout=10, offset=0, retry=True):
         try:
             if not wait:
                 return self._element.click()
@@ -83,7 +87,10 @@ class Element(object):
                 ActionChains(self.driver).move_to_element_with_offset(clickable, 0, offset).click().perform()
             else:
                 clickable.click()
-        except Exception as e:
+        except WebDriverException as e:
+            if "Other element would receive the click" in str(e) and retry:
+                time.sleep(2)
+                return self.click(wait=wait, timeout=timeout, offset=offset, retry=False)
             raise DriverException(e.__class__.__name__, str(e)) from None
 
     def submit(self):
@@ -130,7 +137,10 @@ class Element(object):
 
     def find_element(self, value=None, *, by=By.CSS_SELECTOR):
         by = check_xpath_by(by=by, locator=value)
-        new_element = self._element.find_element(by=by, value=value)
+        try:
+            new_element = self._element.find_element(by=by, value=value)
+        except Exception as e:
+            raise DriverException(e.__class__.__name__, str(e)) from None
         return Element(by=by, locator=value, web_element=new_element)
 
     def find_elements(self, value=None, *, by=By.CSS_SELECTOR):
@@ -139,10 +149,12 @@ class Element(object):
         return [Element(by=by, locator=value, web_element=e) for e in new_elements]
 
     # Other methods
-    def set_value(self, text):
+    def set_value(self, text, tab=False):
         self.click()
         self.clear()
         self.send_keys(text)
+        if tab:
+            self.send_keys(Keys.TAB)
 
 
 class SelectElement(Element):

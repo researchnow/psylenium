@@ -11,10 +11,13 @@ from selenium.webdriver.support.select import Select
 
 from selenium.common.exceptions import WebDriverException, TimeoutException, NoSuchElementException, \
     StaleElementReferenceException
+
 from .exceptions import DriverException, TimeOutException
 
 
-def check_xpath_by(*, by, locator):
+def check_xpath_by(*, by: str, locator: str):
+    """ Checks the given locator to see if it is an XPATH, and overrides the given 'by' argument if it is. """
+
     if by == By.CSS_SELECTOR:
         if locator.startswith("//") or locator.startswith("./") or "[contains(" in locator:
             return By.XPATH
@@ -22,6 +25,9 @@ def check_xpath_by(*, by, locator):
 
 
 def wait_for_element(*, driver, locator, by=By.CSS_SELECTOR, timeout=10):
+    """ Waits for a given element as defined by the 'by' and 'locator' arguments. Raises a TimeOutException instead of
+     a TimeoutException in order to prevent the extra Selenium traceback. """
+
     by = check_xpath_by(by=by, locator=locator)
     try:
         WebDriverWait(driver, timeout).until(EC.visibility_of_element_located((by, locator)))
@@ -32,6 +38,9 @@ def wait_for_element(*, driver, locator, by=By.CSS_SELECTOR, timeout=10):
 
 
 def wait_until_not_visible(*, driver, locator, by=By.CSS_SELECTOR, timeout=10):
+    """ Waits until the given element (as defined by the 'by' and 'locator' arguments) is no longer visible - i.e.
+    loading icons, etc. """
+
     by = check_xpath_by(by=by, locator=locator)
     try:
         for _ in range(timeout):
@@ -44,6 +53,7 @@ def wait_until_not_visible(*, driver, locator, by=By.CSS_SELECTOR, timeout=10):
 
 
 def element_exists(*, driver, locator, by=By.CSS_SELECTOR):
+    """ Checks if an element exists for the given locator, and whether it's displayed"""
     by = check_xpath_by(by=by, locator=locator)
     for e in driver.find_elements(by=by, value=locator):
         if e.is_displayed():
@@ -52,10 +62,12 @@ def element_exists(*, driver, locator, by=By.CSS_SELECTOR):
 
 
 class Element(object):
-    """
+    """ A wrapper around the WebElement class, allowing us to make improvements as we see fit. While not a true child
+    class, it has accessors for all attributes and methods in the WebElement class.
+
     :type _element: WebElement
     """
-    def __init__(self, by, locator, web_element: WebElement):
+    def __init__(self, *, by: str, locator: str, web_element: WebElement):
         self.by = by
         self.locator = locator
         self._element = web_element
@@ -135,7 +147,10 @@ class Element(object):
     def parent(self):
         return self._element.parent
 
-    def find_element(self, value=None, *, by=By.CSS_SELECTOR):
+    def find_element(self, value: str, *, by=By.CSS_SELECTOR):
+        """ Wrapper around the WebElement's find_element that will return an Element instead of a WebElement. Also
+        catches any Selenium errors and raises them without the excess traceback. """
+
         by = check_xpath_by(by=by, locator=value)
         try:
             new_element = self._element.find_element(by=by, value=value)
@@ -143,13 +158,13 @@ class Element(object):
             raise DriverException(e.__class__.__name__, str(e)) from None
         return Element(by=by, locator=value, web_element=new_element)
 
-    def find_elements(self, value=None, *, by=By.CSS_SELECTOR):
+    def find_elements(self, value: str, *, by=By.CSS_SELECTOR):
         by = check_xpath_by(by=by, locator=value)
         new_elements = self._element.find_elements(by=by, value=value)
         return [Element(by=by, locator=value, web_element=e) for e in new_elements]
 
     # Other methods
-    def set_value(self, text, tab=False):
+    def set_value(self, text, *, tab=False):
         self.click()
         self.clear()
         self.send_keys(text)
@@ -158,6 +173,8 @@ class Element(object):
 
 
 class SelectElement(Element):
+    """ An extension of the Element class that replicates the Select class from Selenium. """
+
     def __init__(self, normal_element: Element):
         super().__init__(by=normal_element.by, locator=normal_element.locator, web_element=normal_element._element)
         self._select = Select(self._element)

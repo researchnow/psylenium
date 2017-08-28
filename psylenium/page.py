@@ -18,6 +18,9 @@ class Page(object):
         self.elements = {}
         self.url = url
 
+    def __repr__(self):
+        return f"<{self.__class__.__name__} Page object with browser at {self.driver.current_url}>"
+
     def go_to_page(self):
         if not self.url:
             raise ValueError("No URL defined for this Page class.")
@@ -65,14 +68,21 @@ class Page(object):
 
 class PageComponent(object):
     """ An Element container class similar to the Page class, but smaller in scope - tethered to a single HTML element
-     as its root instead of the DOM - and linked to a Page object that represents the DOM.
+     as its root instead of the DOM - and linked to a Page object that represents the DOM. Essentially, this is a
+     child class of both Page and Element, so it includes accessors for the methods from Element.
+
+    :type parent_page: Page
+    :type elements: dict[str, Element]
     """
 
-    def __init__(self, *, page: Page, locator, by=By.CSS_SELECTOR):
+    def __init__(self, *, page: Page, locator: str, by=By.CSS_SELECTOR):
         self.parent_page = page
         self.locator = locator
         self.by = by
         self.elements = {}
+
+    def __repr__(self):
+        return f"<{self.__class__.__name__} PageComponent object rooted at {self.by} locator [ {self.locator} ]>"
 
     @property
     def driver(self):
@@ -83,6 +93,7 @@ class PageComponent(object):
         return self.parent_page.element(by=self.by, locator=self.locator)
 
     def wait_for_self(self, *, timeout=10):
+        """ Built-in wait method that waits for the PageComponent's root element to appear on the page. """
         return self.parent_page.wait_for_element(locator=self.locator, by=self.by, timeout=timeout)
 
     def wait_for_element(self, locator, *, by=By.CSS_SELECTOR, timeout=10):
@@ -103,6 +114,10 @@ class PageComponent(object):
         return self.get().find_elements(by=by, value=locator)
 
     def element(self, locator, by=By.CSS_SELECTOR) -> Element:
+        """ This function works the same as the Page class's element() method, except that it will invoke find_element()
+        against the PageComponent's root Element object. This will only search from that DOM element downward instead
+        of throughout the entire DOM. """
+
         if self.elements.get(locator):
             try:
                 self.elements[locator].is_enabled()
@@ -136,11 +151,17 @@ class PageComponent(object):
 
 class SubComponent(PageComponent):
     """ An extension of the PageComponent class that is built for nesting components. Tied to a PageComponent parent
-    instead of the overall Page. """
+    instead of the overall Page.
 
-    def __init__(self, parent: PageComponent, locator, by=By.CSS_SELECTOR):
+    :type parent: PageComponent
+    """
+
+    def __init__(self, *, parent: PageComponent, locator: str, by=By.CSS_SELECTOR):
         self.parent = parent
         super().__init__(page=parent.parent_page, locator=locator, by=by)
+
+    def __repr__(self):
+        return f"<{self.__class__.__name__} SubComponent object rooted at {self.by} locator [ {self.locator} ]>"
 
     def get(self):
         return self.parent.element(by=self.by, locator=self.locator)

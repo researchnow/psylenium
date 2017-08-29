@@ -13,10 +13,13 @@ class Page(object):
     :type elements: dict[str, Element]
     """
 
-    def __init__(self, driver, url=None):
+    def __init__(self, driver, url=None, default_timeout=5, waits_enabled=True):
         self.driver = driver
         self.elements = {}
         self.url = url
+
+        self.timeout = default_timeout
+        self.no_waits = not waits_enabled
 
     def __repr__(self):
         return f"<{self.__class__.__name__} Page object with browser at {self.driver.current_url}>"
@@ -26,7 +29,8 @@ class Page(object):
             raise ValueError("No URL defined for this Page class.")
         self.driver.get(self.url)
 
-    def wait_for_element(self, locator, *, by=By.CSS_SELECTOR, timeout=10):
+    def wait_for_element(self, locator, *, by=By.CSS_SELECTOR, timeout=None):
+        timeout = self.timeout if timeout is None else timeout
         wait_for_element(driver=self.driver, by=by, locator=locator, timeout=timeout)
 
     def wait_until_not_visible(self, locator, *, by=By.CSS_SELECTOR, timeout=2):
@@ -35,10 +39,10 @@ class Page(object):
     def element_exists(self, locator, by=By.CSS_SELECTOR):
         return element_exists(driver=self.driver, by=by, locator=locator)
 
-    def find_element(self, locator, by=By.CSS_SELECTOR, wait=True, timeout=10):
+    def find_element(self, locator, by=By.CSS_SELECTOR, wait=True, timeout=None):
         by = check_xpath_by(by=by, locator=locator)
-        if wait:
-            self.wait_for_element(by=by, locator=locator, timeout=timeout)
+        if wait and not self.no_waits:
+            self.wait_for_element(by=by, locator=locator, timeout=(self.timeout if timeout is None else timeout))
         try:
             element = self.driver.find_element(by=by, value=locator)
         except Exception as e:
@@ -81,6 +85,9 @@ class PageComponent(object):
         self.by = by
         self.elements = {}
 
+        self.timeout = page.timeout
+        self.no_waits = False
+
     def __repr__(self):
         return f"<{self.__class__.__name__} PageComponent object rooted at {self.by} locator [ {self.locator} ]>"
 
@@ -92,11 +99,13 @@ class PageComponent(object):
         """ Retrieval method for the Element that represents the root of this part of the page. """
         return self.parent_page.element(by=self.by, locator=self.locator)
 
-    def wait_for_self(self, *, timeout=10):
+    def wait_for_self(self, *, timeout: int=None):
         """ Built-in wait method that waits for the PageComponent's root element to appear on the page. """
+        timeout = self.timeout if timeout is None else timeout
         return self.parent_page.wait_for_element(locator=self.locator, by=self.by, timeout=timeout)
 
-    def wait_for_element(self, locator, *, by=By.CSS_SELECTOR, timeout=10):
+    def wait_for_element(self, locator, *, by=By.CSS_SELECTOR, timeout: int=None):
+        timeout = self.timeout if timeout is None else timeout
         wait_for_element(driver=self.driver, by=by, locator=locator, timeout=timeout)
 
     def wait_until_not_visible(self, locator, *, by=By.CSS_SELECTOR, timeout=2):
@@ -105,9 +114,9 @@ class PageComponent(object):
     def element_exists(self, locator, by=By.CSS_SELECTOR):
         return element_exists(driver=self.driver, by=by, locator=locator)
 
-    def find_element(self, locator, by=By.CSS_SELECTOR, wait=True, timeout=10):
-        if wait:
-            self.parent_page.wait_for_element(by=by, locator=locator, timeout=timeout)
+    def find_element(self, locator, by=By.CSS_SELECTOR, wait=True, timeout: int=None):
+        if wait and not self.no_waits:
+            self.wait_for_element(by=by, locator=locator, timeout=(self.timeout if timeout is None else timeout))
         return self.get().find_element(by=by, value=locator)
 
     def find_elements(self, locator, by=By.CSS_SELECTOR):
@@ -124,7 +133,7 @@ class PageComponent(object):
             except StaleElementReferenceException:
                 self.elements.pop(locator)
         if not self.elements.get(locator):
-            self.elements[locator] = self.get().find_element(by=by, value=locator)
+            self.elements[locator] = self.find_element(by=by, locator=locator)
         return self.elements[locator]
 
     def click(self):

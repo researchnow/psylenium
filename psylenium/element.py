@@ -171,6 +171,10 @@ class Element(object):
         if tab:
             self.send_keys(Keys.TAB)
 
+    def hover(self, *, driver):
+        hover = ActionChains(driver).move_to_element(self._element)
+        hover.perform()
+
 
 class SelectElement(Element):
     """ An extension of the Element class that replicates the Select class from Selenium. """

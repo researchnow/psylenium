@@ -157,6 +157,9 @@ class PageComponent(object):
     def send_keys(self, *value):
         return self.get().send_keys(*value)
 
+    def set_value(self, text, *, tab=False):
+        return self.get().set_value(text=text, tab=tab)
+
 
 class SubComponent(PageComponent):
     """ An extension of the PageComponent class that is built for nesting components. Tied to a PageComponent parent

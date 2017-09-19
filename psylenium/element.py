@@ -171,9 +171,24 @@ class Element(object):
         if tab:
             self.send_keys(Keys.TAB)
 
-    def hover(self, *, driver):
-        hover = ActionChains(driver).move_to_element(self._element)
+    def hover(self):
+        hover = ActionChains(self.driver).move_to_element(self._element)
         hover.perform()
+
+    def double_click(self):
+        chain = ActionChains(self.driver).double_click(self._element)
+        chain.perform()
+
+    def highlight(self):
+        """ Highlights (blinks) a Selenium WebDriver element. """
+
+        def apply_style(s):
+            self.driver.execute_script("arguments[0].setAttribute('style', arguments[1]);", self._element, s)
+
+        original_style = self._element.get_attribute('style')
+        apply_style("background: yellow; border: 2px solid red;")
+        time.sleep(.3)
+        apply_style(original_style)
 
 
 class SelectElement(Element):

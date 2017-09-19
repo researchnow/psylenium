@@ -69,6 +69,23 @@ class Page(object):
             self.elements[locator] = self.find_element(by=by, locator=locator)
         return self.elements[locator]
 
+    def get_xpath_results_from_js(self, xpath, attribute, result_type="ORDERED_NODE_ITERATOR_TYPE"):
+        """ A standard JavaScript statement block that executes the provided XPath and returns the results as a list.
+        This can be used to evaluate XPaths without having to deal with the elements themselves, like when you just need
+        the IDs. """
+
+        empty = """ var iter = document.evaluate("<xpath>", document, null, XPathResult.<rtype>, null);
+                    var arrayXpath = new Array();
+                    var thisNode = iter.iterateNext();
+                    while (thisNode) {
+                        arrayXpath.push(thisNode.<attr>);
+                        thisNode = iter.iterateNext();
+                    }
+                    return arrayXpath; """
+        script = empty.replace("<xpath>", xpath).replace("<attr>", attribute).replace("<rtype>", result_type)
+        results = self.driver.execute_script(script)
+        return results
+
 
 class PageComponent(object):
     """ An Element container class similar to the Page class, but smaller in scope - tethered to a single HTML element

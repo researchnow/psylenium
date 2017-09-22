@@ -190,6 +190,10 @@ class Element(object):
         time.sleep(.3)
         apply_style(original_style)
 
+    def scroll_to(self):
+        """ Scrolls to an element. """
+        self.driver.execute_script("arguments[0].scrollIntoView()", self._element)
+
 
 class SelectElement(Element):
     """ An extension of the Element class that replicates the Select class from Selenium. """

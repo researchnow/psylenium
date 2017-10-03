@@ -15,7 +15,7 @@ install_reqs = parse_requirements('requirements.txt', session='hack')
 
 setup(
     name='psylenium',
-    version='1.0.4.3',
+    version='1.0.4.4',
     description='Core Selenium functionality supporting automated UI testing',
     long_description=long_description,
     url='https://github.com/researchnow/pysts',

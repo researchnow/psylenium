@@ -24,13 +24,16 @@ def check_xpath_by(*, by: str, locator: str):
     return by
 
 
-def wait_for_element(*, driver, locator, by=By.CSS_SELECTOR, timeout=10):
+def wait_for_element(*, driver, locator, by=By.CSS_SELECTOR, timeout=10, visible=True):
     """ Waits for a given element as defined by the 'by' and 'locator' arguments. Raises a TimeOutException instead of
      a TimeoutException in order to prevent the extra Selenium traceback. """
 
     by = check_xpath_by(by=by, locator=locator)
     try:
-        WebDriverWait(driver, timeout).until(EC.visibility_of_element_located((by, locator)))
+        if visible:
+            WebDriverWait(driver, timeout).until(EC.visibility_of_element_located((by, locator)))
+        else:
+            WebDriverWait(driver, timeout).until(EC.presence_of_element_located((by, locator)))
     except TimeoutException:
         raise TimeOutException(by=by, locator=locator, timeout=timeout) from None
     except Exception as e:
@@ -52,6 +55,7 @@ def wait_until_not_visible(*, driver, locator, by=By.CSS_SELECTOR, timeout=10):
     raise Exception(f"Target element ({by} locator [ {locator} ]) still visible after wait period.")
 
 
+# TODO: Review this; should it be checking displayed?
 def element_exists(*, driver, locator, by=By.CSS_SELECTOR):
     """ Checks if an element exists for the given locator, and whether it's displayed"""
     by = check_xpath_by(by=by, locator=locator)

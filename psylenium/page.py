@@ -97,10 +97,11 @@ class PageComponent(object):
     :type elements: dict[str, Element]
     """
 
-    def __init__(self, *, page: Page, locator: str, by=By.CSS_SELECTOR):
+    def __init__(self, *, page: Page, locator: str, by=By.CSS_SELECTOR, visible=True):
         self.parent_page = page
         self.locator = locator
         self.by = by
+        self.visible = visible
         self.elements = {}
 
         self.timeout = page.timeout
@@ -115,7 +116,7 @@ class PageComponent(object):
 
     def get(self) -> Element:
         """ Retrieval method for the Element that represents the root of this part of the page. """
-        return self.parent_page.element(by=self.by, locator=self.locator)
+        return self.parent_page.element(by=self.by, locator=self.locator, visible=self.visible)
 
     def wait_for_self(self, *, timeout: int=None):
         """ Built-in wait method that waits for the PageComponent's root element to appear on the page. """
@@ -187,9 +188,9 @@ class SubComponent(PageComponent):
     :type parent: PageComponent
     """
 
-    def __init__(self, *, parent: PageComponent, locator: str, by=By.CSS_SELECTOR):
+    def __init__(self, *, parent: PageComponent, locator: str, by=By.CSS_SELECTOR, visible=True):
         self.parent = parent
-        super().__init__(page=parent.parent_page, locator=locator, by=by)
+        super().__init__(page=parent.parent_page, locator=locator, by=by, visible=visible)
 
     def __repr__(self):
         return f"<{self.__class__.__name__} SubComponent object rooted at {self.by} locator [ {self.locator} ]>"

@@ -80,6 +80,11 @@ class Element(object):
     def __repr__(self):
         return f"<Element object for {self.by} locator [ {self.locator} ]>"
 
+    def __eq__(self, other):
+        if isinstance(other, (str, int)):
+            return self.text == str(other)
+        return super().__eq__(other)
+
     @property
     def driver(self):
         return self._element.parent

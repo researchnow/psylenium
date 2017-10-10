@@ -71,10 +71,11 @@ class Element(object):
 
     :type _element: WebElement
     """
-    def __init__(self, *, by: str, locator: str, web_element: WebElement):
+    def __init__(self, *, by: str, locator: str, web_element: WebElement, parent=None):
         self.by = by
         self.locator = locator
         self._element = web_element
+        self._parent = parent
 
     def __repr__(self):
         return f"<Element object for {self.by} locator [ {self.locator} ]>"
@@ -82,6 +83,10 @@ class Element(object):
     @property
     def driver(self):
         return self._element.parent
+
+    @property
+    def parent(self):
+        return self._parent or self.driver
 
     @property
     def tag_name(self):
@@ -98,12 +103,13 @@ class Element(object):
             if not wait:
                 return self._element.click()
 
-            clickable = WebDriverWait(self.driver, timeout).until(EC.element_to_be_clickable((self.by, self.locator)))
+            clickable = WebDriverWait(self.parent, timeout).until(EC.element_to_be_clickable((self.by, self.locator)))
             if offset:
                 ActionChains(self.driver).move_to_element_with_offset(clickable, 0, offset).click().perform()
             else:
                 clickable.click()
         except WebDriverException as e:
+            print(e)
             if "Other element would receive the click" in str(e) and retry:
                 time.sleep(2)
                 return self.click(wait=wait, timeout=timeout, offset=offset, retry=False)
@@ -147,10 +153,6 @@ class Element(object):
     def location(self):
         return self._element.location
 
-    @property
-    def parent(self):
-        return self._element.parent
-
     def find_element(self, value: str, *, by=By.CSS_SELECTOR):
         """ Wrapper around the WebElement's find_element that will return an Element instead of a WebElement. Also
         catches any Selenium errors and raises them without the excess traceback. """
@@ -160,12 +162,12 @@ class Element(object):
             new_element = self._element.find_element(by=by, value=value)
         except Exception as e:
             raise DriverException(e.__class__.__name__, str(e)) from None
-        return Element(by=by, locator=value, web_element=new_element)
+        return Element(by=by, locator=value, web_element=new_element, parent=self._element)
 
     def find_elements(self, value: str, *, by=By.CSS_SELECTOR):
         by = check_xpath_by(by=by, locator=value)
         new_elements = self._element.find_elements(by=by, value=value)
-        return [Element(by=by, locator=value, web_element=e) for e in new_elements]
+        return [Element(by=by, locator=value, web_element=e, parent=self._element) for e in new_elements]
 
     # Other methods
     def set_value(self, text, *, tab=False):

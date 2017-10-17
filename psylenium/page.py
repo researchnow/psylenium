@@ -29,9 +29,9 @@ class Page(object):
             raise ValueError("No URL defined for this Page class.")
         self.driver.get(self.url)
 
-    def wait_for_element(self, locator, *, by=By.CSS_SELECTOR, timeout=None):
+    def wait_for_element(self, locator, *, by=By.CSS_SELECTOR, timeout=None, visible=True):
         timeout = self.timeout if timeout is None else timeout
-        wait_for_element(driver=self.driver, by=by, locator=locator, timeout=timeout)
+        wait_for_element(driver=self.driver, by=by, locator=locator, timeout=timeout, visible=visible)
 
     def wait_until_not_visible(self, locator, *, by=By.CSS_SELECTOR, timeout=2):
         return wait_until_not_visible(driver=self.driver, by=by, locator=locator, timeout=timeout)
@@ -39,10 +39,11 @@ class Page(object):
     def element_exists(self, locator, by=By.CSS_SELECTOR):
         return element_exists(driver=self.driver, by=by, locator=locator)
 
-    def find_element(self, locator, by=By.CSS_SELECTOR, wait=True, timeout=None):
+    def find_element(self, locator, by=By.CSS_SELECTOR, wait=True, timeout=None, visible=True):
         by = check_xpath_by(by=by, locator=locator)
+        timeout = self.timeout if timeout is None else timeout
         if wait and not self.no_waits:
-            self.wait_for_element(by=by, locator=locator, timeout=(self.timeout if timeout is None else timeout))
+            self.wait_for_element(by=by, locator=locator, timeout=timeout, visible=visible)
         try:
             element = self.driver.find_element(by=by, value=locator)
         except Exception as e:
@@ -54,7 +55,7 @@ class Page(object):
         elements = self.driver.find_elements(by=by, value=locator)
         return [Element(by=by, locator=locator, web_element=element) for element in elements]
 
-    def element(self, locator: str, *, by=By.CSS_SELECTOR):
+    def element(self, locator: str, *, by=By.CSS_SELECTOR, visible=True) -> Element:
         """ Retrieval method for accessing Element objects on the page. It is the underlying method called by any
         property elements on Page classes; it checks its storage dict for the element in case it's already been
         accessed, and also checks if that element is still valid. If either of those checks fail, it looks up a new
@@ -66,7 +67,7 @@ class Page(object):
             except StaleElementReferenceException:
                 self.elements.pop(locator)
         if not self.elements.get(locator):
-            self.elements[locator] = self.find_element(by=by, locator=locator)
+            self.elements[locator] = self.find_element(by=by, locator=locator, visible=visible)
         return self.elements[locator]
 
     def get_xpath_results_from_js(self, xpath, attribute, result_type="ORDERED_NODE_ITERATOR_TYPE"):
@@ -96,10 +97,11 @@ class PageComponent(object):
     :type elements: dict[str, Element]
     """
 
-    def __init__(self, *, page: Page, locator: str, by=By.CSS_SELECTOR):
+    def __init__(self, *, page: Page, locator: str, by=By.CSS_SELECTOR, visible=True):
         self.parent_page = page
         self.locator = locator
         self.by = by
+        self.visible = visible
         self.elements = {}
 
         self.timeout = page.timeout
@@ -114,16 +116,16 @@ class PageComponent(object):
 
     def get(self) -> Element:
         """ Retrieval method for the Element that represents the root of this part of the page. """
-        return self.parent_page.element(by=self.by, locator=self.locator)
+        return self.parent_page.element(by=self.by, locator=self.locator, visible=self.visible)
 
     def wait_for_self(self, *, timeout: int=None):
         """ Built-in wait method that waits for the PageComponent's root element to appear on the page. """
         timeout = self.timeout if timeout is None else timeout
         return self.parent_page.wait_for_element(locator=self.locator, by=self.by, timeout=timeout)
 
-    def wait_for_element(self, locator, *, by=By.CSS_SELECTOR, timeout: int=None):
+    def wait_for_element(self, locator, *, by=By.CSS_SELECTOR, timeout: int=None, visible=True):
         timeout = self.timeout if timeout is None else timeout
-        wait_for_element(driver=self.driver, by=by, locator=locator, timeout=timeout)
+        wait_for_element(driver=self.driver, by=by, locator=locator, timeout=timeout, visible=visible)
 
     def wait_until_not_visible(self, locator, *, by=By.CSS_SELECTOR, timeout=2):
         return wait_until_not_visible(driver=self.driver, by=by, locator=locator, timeout=timeout)
@@ -131,15 +133,16 @@ class PageComponent(object):
     def element_exists(self, locator, by=By.CSS_SELECTOR):
         return element_exists(driver=self.driver, by=by, locator=locator)
 
-    def find_element(self, locator, by=By.CSS_SELECTOR, wait=True, timeout: int=None):
+    def find_element(self, locator, by=By.CSS_SELECTOR, wait=True, timeout: int=None, visible=True):
+        timeout = self.timeout if timeout is None else timeout
         if wait and not self.no_waits:
-            self.wait_for_element(by=by, locator=locator, timeout=(self.timeout if timeout is None else timeout))
+            self.wait_for_element(by=by, locator=locator, timeout=timeout, visible=visible)
         return self.get().find_element(by=by, value=locator)
 
     def find_elements(self, locator, by=By.CSS_SELECTOR):
         return self.get().find_elements(by=by, value=locator)
 
-    def element(self, locator, by=By.CSS_SELECTOR) -> Element:
+    def element(self, locator, *, by=By.CSS_SELECTOR, visible=True) -> Element:
         """ This function works the same as the Page class's element() method, except that it will invoke find_element()
         against the PageComponent's root Element object. This will only search from that DOM element downward instead
         of throughout the entire DOM. """
@@ -150,7 +153,7 @@ class PageComponent(object):
             except StaleElementReferenceException:
                 self.elements.pop(locator)
         if not self.elements.get(locator):
-            self.elements[locator] = self.find_element(by=by, locator=locator)
+            self.elements[locator] = self.find_element(by=by, locator=locator, visible=visible)
         return self.elements[locator]
 
     def click(self):
@@ -185,9 +188,9 @@ class SubComponent(PageComponent):
     :type parent: PageComponent
     """
 
-    def __init__(self, *, parent: PageComponent, locator: str, by=By.CSS_SELECTOR):
+    def __init__(self, *, parent: PageComponent, locator: str, by=By.CSS_SELECTOR, visible=True):
         self.parent = parent
-        super().__init__(page=parent.parent_page, locator=locator, by=by)
+        super().__init__(page=parent.parent_page, locator=locator, by=by, visible=visible)
 
     def __repr__(self):
         return f"<{self.__class__.__name__} SubComponent object rooted at {self.by} locator [ {self.locator} ]>"

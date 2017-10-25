@@ -3,9 +3,9 @@ from selenium.webdriver.common.by import By
 
 from selenium.common.exceptions import StaleElementReferenceException
 
-from psylenium.exceptions import DriverException
 from psylenium.element import Element, check_if_by_should_be_xpath, wait_for_element, wait_until_not_visible, \
     element_exists, is_element_visible
+from psylenium.exceptions import DriverException
 
 
 class DOMObject(object):
@@ -42,6 +42,33 @@ class DOMObject(object):
     def element_exists(self, locator, by=By.CSS_SELECTOR):
         return element_exists(driver=self._selenium_root, by=by, locator=locator)
 
+    def find_element(self, locator, *, by=By.CSS_SELECTOR, wait=True, timeout=None, visible=True):
+        raise NotImplementedError("find_element must be implemented by all direct child classes of DOMObject.")
+
+    def find_elements(self, locator, by=By.CSS_SELECTOR):
+        raise NotImplementedError("find_elements must be implemented by all direct child classes of DOMObject.")
+
+    def element(self, locator, *, by=By.CSS_SELECTOR, visible=True) -> Element:
+        """ Retrieval method for accessing Element objects on the page. It is the underlying method called by any
+        property elements on DOMObject classes; it checks its storage dict for the element in case it's already been
+        accessed, and also checks if that element is still valid. If either of those checks fail, it looks up a new
+        Element and stores it before returning.
+
+        The actual implementation of how the DOMObject looks up new Elements will differe between child classes.
+
+        This function works the same as the Page class's element() method, except that it will invoke find_element()
+        against the PageComponent's root Element object. This will only search from that DOM element downward instead
+        of throughout the entire DOM. """
+
+        if self.elements.get(locator):
+            try:
+                self.elements[locator].is_enabled()
+            except StaleElementReferenceException:
+                self.elements.pop(locator)
+        if not self.elements.get(locator):
+            self.elements[locator] = self.find_element(by=by, locator=locator, visible=visible)
+        return self.elements[locator]
+
 
 class Page(DOMObject):
     """
@@ -66,6 +93,10 @@ class Page(DOMObject):
         self.driver.get(self.url)
 
     def find_element(self, locator, by=By.CSS_SELECTOR, *, wait=True, timeout=None, visible=True):
+        """ Invokes `find_element` against the driver, which searches throughout the entire DOM. For all other DOMObject
+         child classes (PageComponent & SubComponent), they should only ever invoke the `find_element` of their root
+         Element class instead of the driver. """
+
         by = check_if_by_should_be_xpath(by=by, locator=locator)
         if wait and self.waits_enabled:
             self.wait_for_element(by=by, locator=locator, timeout=timeout, visible=visible)
@@ -79,21 +110,6 @@ class Page(DOMObject):
         by = check_if_by_should_be_xpath(by=by, locator=locator)
         elements = self.driver.find_elements(by=by, value=locator)
         return [Element(by=by, locator=locator, web_element=element) for element in elements]
-
-    def element(self, locator: str, *, by=By.CSS_SELECTOR, visible=True) -> Element:
-        """ Retrieval method for accessing Element objects on the page. It is the underlying method called by any
-        property elements on Page classes; it checks its storage dict for the element in case it's already been
-        accessed, and also checks if that element is still valid. If either of those checks fail, it looks up a new
-        Element and stores it before returning. """
-
-        if self.elements.get(locator):
-            try:
-                self.elements[locator].is_enabled()
-            except StaleElementReferenceException:
-                self.elements.pop(locator)
-        if not self.elements.get(locator):
-            self.elements[locator] = self.find_element(by=by, locator=locator, visible=visible)
-        return self.elements[locator]
 
     def get_xpath_results_from_js(self, xpath, attribute, result_type="ORDERED_NODE_ITERATOR_TYPE"):
         """ A standard JavaScript statement block that executes the provided XPath and returns the results as a list.
@@ -131,6 +147,13 @@ class PageComponent(DOMObject):
     def __repr__(self):
         return f"<{self.__class__.__name__} PageComponent object rooted at {self.by} locator [ {self.locator} ]>"
 
+    # noinspection PyProtectedMember
+    @property
+    def _selenium_root(self):
+        """ Used to force Selenium methods/waits to work relative to the target element, instead of giving it the driver
+         and thus searching from the start of the DOM. """
+        return self.get()._element
+
     @property
     def driver(self):
         return self.parent_page.driver
@@ -139,39 +162,20 @@ class PageComponent(DOMObject):
         """ Retrieval method for the Element that represents the root of this part of the page. """
         return self.parent_page.element(by=self.by, locator=self.locator, visible=self.visible)
 
-    # noinspection PyProtectedMember
-    @property
-    def _selenium_root(self):
-        """ Used to force Selenium methods/waits to work relative to the target element, instead of giving it the driver
-         and thus searching from the start of the DOM. """
-        return self.get()._element
-
     def wait_for_self(self, *, timeout: int=None):
         """ Built-in wait method that waits for the PageComponent's root element to appear on the page. """
         timeout = self.default_timeout if timeout is None else timeout
         return self.parent_page.wait_for_element(locator=self.locator, by=self.by, timeout=timeout, visible=self.visible)
 
-    def find_element(self, locator, by=By.CSS_SELECTOR, wait=True, timeout: int=None, visible=True):
+    def find_element(self, locator, *, by=By.CSS_SELECTOR, wait=True, timeout: int=None, visible=True):
+        """ Invokes find_element against the root Element, which will only search from that DOM element downward
+        instead of throughout the entire DOM."""
         if wait and self.waits_enabled:
             self.wait_for_element(by=by, locator=locator, timeout=timeout, visible=visible)
         return self.get().find_element(by=by, value=locator)
 
     def find_elements(self, locator, by=By.CSS_SELECTOR):
         return self.get().find_elements(by=by, value=locator)
-
-    def element(self, locator, *, by=By.CSS_SELECTOR, visible=True) -> Element:
-        """ This function works the same as the Page class's element() method, except that it will invoke find_element()
-        against the PageComponent's root Element object. This will only search from that DOM element downward instead
-        of throughout the entire DOM. """
-
-        if self.elements.get(locator):
-            try:
-                self.elements[locator].is_enabled()
-            except StaleElementReferenceException:
-                self.elements.pop(locator)
-        if not self.elements.get(locator):
-            self.elements[locator] = self.find_element(by=by, locator=locator, visible=visible)
-        return self.elements[locator]
 
     # # #
     # Accessor methods for common methods on the PageComponent's root Element.

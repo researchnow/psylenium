@@ -4,7 +4,8 @@ from selenium.webdriver.common.by import By
 from selenium.common.exceptions import StaleElementReferenceException
 
 from psylenium.exceptions import DriverException
-from psylenium.element import Element, check_xpath_by, wait_for_element, wait_until_not_visible, element_exists
+from psylenium.element import Element, check_if_by_should_be_xpath, wait_for_element, wait_until_not_visible, \
+    element_exists
 
 
 class Page(object):
@@ -40,7 +41,7 @@ class Page(object):
         return element_exists(driver=self.driver, by=by, locator=locator)
 
     def find_element(self, locator, by=By.CSS_SELECTOR, wait=True, timeout=None, visible=True):
-        by = check_xpath_by(by=by, locator=locator)
+        by = check_if_by_should_be_xpath(by=by, locator=locator)
         timeout = self.timeout if timeout is None else timeout
         if wait and not self.no_waits:
             self.wait_for_element(by=by, locator=locator, timeout=timeout, visible=visible)
@@ -51,7 +52,7 @@ class Page(object):
         return Element(by=by, locator=locator, web_element=element)
 
     def find_elements(self, locator, by=By.CSS_SELECTOR):
-        by = check_xpath_by(by=by, locator=locator)
+        by = check_if_by_should_be_xpath(by=by, locator=locator)
         elements = self.driver.find_elements(by=by, value=locator)
         return [Element(by=by, locator=locator, web_element=element) for element in elements]
 

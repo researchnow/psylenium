@@ -15,7 +15,7 @@ from selenium.common.exceptions import WebDriverException, TimeoutException, NoS
 from .exceptions import DriverException, TimeOutException
 
 
-def check_xpath_by(*, by: str, locator: str):
+def check_if_by_should_be_xpath(*, by: str, locator: str):
     """ Checks the given locator to see if it is an XPATH, and overrides the given 'by' argument if it is. """
 
     if by == By.CSS_SELECTOR:
@@ -28,7 +28,7 @@ def wait_for_element(*, driver, locator, by=By.CSS_SELECTOR, timeout=10, visible
     """ Waits for a given element as defined by the 'by' and 'locator' arguments. Raises a TimeOutException instead of
      a TimeoutException in order to prevent the extra Selenium traceback. """
 
-    by = check_xpath_by(by=by, locator=locator)
+    by = check_if_by_should_be_xpath(by=by, locator=locator)
     try:
         if visible:
             WebDriverWait(driver, timeout).until(EC.visibility_of_element_located((by, locator)))
@@ -44,7 +44,7 @@ def wait_until_not_visible(*, driver, locator, by=By.CSS_SELECTOR, timeout=10):
     """ Waits until the given element (as defined by the 'by' and 'locator' arguments) is no longer visible - i.e.
     loading icons, etc. """
 
-    by = check_xpath_by(by=by, locator=locator)
+    by = check_if_by_should_be_xpath(by=by, locator=locator)
     try:
         for _ in range(timeout):
             if not driver.find_element(by=by, value=locator).is_displayed():
@@ -58,7 +58,7 @@ def wait_until_not_visible(*, driver, locator, by=By.CSS_SELECTOR, timeout=10):
 # TODO: Review this; should it be checking displayed?
 def element_exists(*, driver, locator, by=By.CSS_SELECTOR):
     """ Checks if an element exists for the given locator, and whether it's displayed"""
-    by = check_xpath_by(by=by, locator=locator)
+    by = check_if_by_should_be_xpath(by=by, locator=locator)
     for e in driver.find_elements(by=by, value=locator):
         if e.is_displayed():
             return True
@@ -162,7 +162,7 @@ class Element(object):
         """ Wrapper around the WebElement's find_element that will return an Element instead of a WebElement. Also
         catches any Selenium errors and raises them without the excess traceback. """
 
-        by = check_xpath_by(by=by, locator=value)
+        by = check_if_by_should_be_xpath(by=by, locator=value)
         try:
             new_element = self._element.find_element(by=by, value=value)
         except Exception as e:
@@ -170,7 +170,7 @@ class Element(object):
         return Element(by=by, locator=value, web_element=new_element, parent=self._element)
 
     def find_elements(self, value: str, *, by=By.CSS_SELECTOR):
-        by = check_xpath_by(by=by, locator=value)
+        by = check_if_by_should_be_xpath(by=by, locator=value)
         new_elements = self._element.find_elements(by=by, value=value)
         return [Element(by=by, locator=value, web_element=e, parent=self._element) for e in new_elements]
 

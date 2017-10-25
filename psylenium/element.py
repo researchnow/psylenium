@@ -55,14 +55,17 @@ def wait_until_not_visible(*, driver, locator, by=By.CSS_SELECTOR, timeout=10):
     raise Exception(f"Target element ({by} locator [ {locator} ]) still visible after wait period.")
 
 
-# TODO: Review this; should it be checking displayed?
-def element_exists(*, driver, locator, by=By.CSS_SELECTOR):
-    """ Checks if an element exists for the given locator, and whether it's displayed"""
+def is_element_visible(*, driver, locator, by=By.CSS_SELECTOR):
+    """ Checks if an element exists for the given locator, and whether it's displayed. """
     by = check_if_by_should_be_xpath(by=by, locator=locator)
-    for e in driver.find_elements(by=by, value=locator):
-        if e.is_displayed():
-            return True
-    return False
+    matches = driver.find_elements(by=by, value=locator)
+    return any(e.is_displayed() for e in matches)
+
+
+def element_exists(*, driver, locator, by=By.CSS_SELECTOR):
+    """ Checks if an element exists for the given locator. """
+    by = check_if_by_should_be_xpath(by=by, locator=locator)
+    return bool(driver.find_elements(by=by, value=locator))
 
 
 class Element(object):

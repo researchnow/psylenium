@@ -5,7 +5,7 @@ from selenium.common.exceptions import StaleElementReferenceException
 
 from psylenium.exceptions import DriverException
 from psylenium.element import Element, check_if_by_should_be_xpath, wait_for_element, wait_until_not_visible, \
-    element_exists
+    element_exists, is_element_visible
 
 
 class Page(object):
@@ -36,6 +36,9 @@ class Page(object):
 
     def wait_until_not_visible(self, locator, *, by=By.CSS_SELECTOR, timeout=2):
         return wait_until_not_visible(driver=self.driver, by=by, locator=locator, timeout=timeout)
+
+    def is_element_visible(self, locator, *, by=By.CSS_SELECTOR):
+        return is_element_visible(driver=self.driver, by=by, locator=locator)
 
     def element_exists(self, locator, by=By.CSS_SELECTOR):
         return element_exists(driver=self.driver, by=by, locator=locator)
@@ -130,6 +133,9 @@ class PageComponent(object):
 
     def wait_until_not_visible(self, locator, *, by=By.CSS_SELECTOR, timeout=2):
         return wait_until_not_visible(driver=self.driver, by=by, locator=locator, timeout=timeout)
+
+    def is_element_visible(self, locator, *, by=By.CSS_SELECTOR):
+        return is_element_visible(driver=self.driver, by=by, locator=locator)
 
     def element_exists(self, locator, by=By.CSS_SELECTOR):
         return element_exists(driver=self.driver, by=by, locator=locator)

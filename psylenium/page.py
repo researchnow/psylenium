@@ -43,7 +43,7 @@ class Page(object):
     def element_exists(self, locator, by=By.CSS_SELECTOR):
         return element_exists(driver=self.driver, by=by, locator=locator)
 
-    def find_element(self, locator, by=By.CSS_SELECTOR, wait=True, timeout=None, visible=True):
+    def find_element(self, locator, by=By.CSS_SELECTOR, *, wait=True, timeout=None, visible=True):
         by = check_if_by_should_be_xpath(by=by, locator=locator)
         timeout = self.timeout if timeout is None else timeout
         if wait and not self.no_waits:
@@ -122,23 +122,33 @@ class PageComponent(object):
         """ Retrieval method for the Element that represents the root of this part of the page. """
         return self.parent_page.element(by=self.by, locator=self.locator, visible=self.visible)
 
+    # noinspection PyProtectedMember
+    @property
+    def _root(self):
+        """ Used to force Selenium methods/waits to work relative to the target element, instead of giving it the driver
+         and thus searching from the start of the DOM. """
+        return self.get()._element
+
     def wait_for_self(self, *, timeout: int=None):
         """ Built-in wait method that waits for the PageComponent's root element to appear on the page. """
         timeout = self.timeout if timeout is None else timeout
         return self.parent_page.wait_for_element(locator=self.locator, by=self.by, timeout=timeout)
 
+    # # #
+    # Accessor methods for the find/visible/exists methods, relative to the root element of the PageComponent.
+    # # #
     def wait_for_element(self, locator, *, by=By.CSS_SELECTOR, timeout: int=None, visible=True):
         timeout = self.timeout if timeout is None else timeout
-        wait_for_element(driver=self.driver, by=by, locator=locator, timeout=timeout, visible=visible)
+        wait_for_element(driver=self._root, by=by, locator=locator, timeout=timeout, visible=visible)
 
     def wait_until_not_visible(self, locator, *, by=By.CSS_SELECTOR, timeout=2):
-        return wait_until_not_visible(driver=self.driver, by=by, locator=locator, timeout=timeout)
+        return wait_until_not_visible(driver=self._root, by=by, locator=locator, timeout=timeout)
 
     def is_element_visible(self, locator, *, by=By.CSS_SELECTOR):
-        return is_element_visible(driver=self.driver, by=by, locator=locator)
+        return is_element_visible(driver=self._root, by=by, locator=locator)
 
     def element_exists(self, locator, by=By.CSS_SELECTOR):
-        return element_exists(driver=self.driver, by=by, locator=locator)
+        return element_exists(driver=self._root, by=by, locator=locator)
 
     def find_element(self, locator, by=By.CSS_SELECTOR, wait=True, timeout: int=None, visible=True):
         timeout = self.timeout if timeout is None else timeout
@@ -163,6 +173,9 @@ class PageComponent(object):
             self.elements[locator] = self.find_element(by=by, locator=locator, visible=visible)
         return self.elements[locator]
 
+    # # #
+    # Accessor methods for common methods on the PageComponent's root Element.
+    # # #
     def click(self):
         return self.get().click()
 
@@ -200,7 +213,8 @@ class SubComponent(PageComponent):
         super().__init__(page=parent.parent_page, locator=locator, by=by, visible=visible)
 
     def __repr__(self):
-        return f"<{self.__class__.__name__} SubComponent object rooted at {self.by} locator [ {self.locator} ]>"
+        return f"<{self.__class__.__name__} SubComponent object rooted at {self.by} locator [ {self.locator}, under " \
+               f"PageComponent {self.parent.__class__.__name__} ]>"
 
     def get(self):
         return self.parent.element(by=self.by, locator=self.locator)

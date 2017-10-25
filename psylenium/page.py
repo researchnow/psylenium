@@ -26,6 +26,22 @@ class DOMObject(object):
         raise NotImplementedError("All DOMObject classes must define their Selenium root, which is either the driver,"
                                   "or the WebElement from the class's root Element.")
 
+    # # #
+    # Accessor methods for the find/visible/exists methods, relative to the class's Selenium root (driver or element).
+    # # #
+    def wait_for_element(self, locator, *, by=By.CSS_SELECTOR, timeout=None, visible=True):
+        timeout = self.timeout if timeout is None else timeout
+        wait_for_element(driver=self._selenium_root, by=by, locator=locator, timeout=timeout, visible=visible)
+
+    def wait_until_not_visible(self, locator, *, by=By.CSS_SELECTOR, timeout=2):
+        return wait_until_not_visible(driver=self._selenium_root, by=by, locator=locator, timeout=timeout)
+
+    def is_element_visible(self, locator, *, by=By.CSS_SELECTOR):
+        return is_element_visible(driver=self._selenium_root, by=by, locator=locator)
+
+    def element_exists(self, locator, by=By.CSS_SELECTOR):
+        return element_exists(driver=self._selenium_root, by=by, locator=locator)
+
 
 class Page(DOMObject):
     """
@@ -50,19 +66,6 @@ class Page(DOMObject):
         if not self.url:
             raise NotImplementedError("No URL defined for this Page class.")
         self.driver.get(self.url)
-
-    def wait_for_element(self, locator, *, by=By.CSS_SELECTOR, timeout=None, visible=True):
-        timeout = self.timeout if timeout is None else timeout
-        wait_for_element(driver=self._selenium_root, by=by, locator=locator, timeout=timeout, visible=visible)
-
-    def wait_until_not_visible(self, locator, *, by=By.CSS_SELECTOR, timeout=2):
-        return wait_until_not_visible(driver=self._selenium_root, by=by, locator=locator, timeout=timeout)
-
-    def is_element_visible(self, locator, *, by=By.CSS_SELECTOR):
-        return is_element_visible(driver=self._selenium_root, by=by, locator=locator)
-
-    def element_exists(self, locator, by=By.CSS_SELECTOR):
-        return element_exists(driver=self._selenium_root, by=by, locator=locator)
 
     def find_element(self, locator, by=By.CSS_SELECTOR, *, wait=True, timeout=None, visible=True):
         by = check_if_by_should_be_xpath(by=by, locator=locator)
@@ -152,22 +155,6 @@ class PageComponent(DOMObject):
         """ Built-in wait method that waits for the PageComponent's root element to appear on the page. """
         timeout = self.timeout if timeout is None else timeout
         return self.parent_page.wait_for_element(locator=self.locator, by=self.by, timeout=timeout)
-
-    # # #
-    # Accessor methods for the find/visible/exists methods, relative to the root element of the PageComponent.
-    # # #
-    def wait_for_element(self, locator, *, by=By.CSS_SELECTOR, timeout: int=None, visible=True):
-        timeout = self.timeout if timeout is None else timeout
-        wait_for_element(driver=self._selenium_root, by=by, locator=locator, timeout=timeout, visible=visible)
-
-    def wait_until_not_visible(self, locator, *, by=By.CSS_SELECTOR, timeout=2):
-        return wait_until_not_visible(driver=self._selenium_root, by=by, locator=locator, timeout=timeout)
-
-    def is_element_visible(self, locator, *, by=By.CSS_SELECTOR):
-        return is_element_visible(driver=self._selenium_root, by=by, locator=locator)
-
-    def element_exists(self, locator, by=By.CSS_SELECTOR):
-        return element_exists(driver=self._selenium_root, by=by, locator=locator)
 
     def find_element(self, locator, by=By.CSS_SELECTOR, wait=True, timeout: int=None, visible=True):
         timeout = self.timeout if timeout is None else timeout

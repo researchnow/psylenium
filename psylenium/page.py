@@ -20,14 +20,14 @@ class Page(object):
         self.url = url
 
         self.timeout = default_timeout
-        self.no_waits = not waits_enabled
+        self.waits_enabled = waits_enabled
 
     def __repr__(self):
         return f"<{self.__class__.__name__} Page object with browser at {self.driver.current_url}>"
 
     def go_to_page(self):
         if not self.url:
-            raise ValueError("No URL defined for this Page class.")
+            raise NotImplementedError("No URL defined for this Page class.")
         self.driver.get(self.url)
 
     def wait_for_element(self, locator, *, by=By.CSS_SELECTOR, timeout=None, visible=True):
@@ -46,7 +46,7 @@ class Page(object):
     def find_element(self, locator, by=By.CSS_SELECTOR, *, wait=True, timeout=None, visible=True):
         by = check_if_by_should_be_xpath(by=by, locator=locator)
         timeout = self.timeout if timeout is None else timeout
-        if wait and not self.no_waits:
+        if wait and self.waits_enabled:
             self.wait_for_element(by=by, locator=locator, timeout=timeout, visible=visible)
         try:
             element = self.driver.find_element(by=by, value=locator)
@@ -109,7 +109,7 @@ class PageComponent(object):
         self.elements = {}
 
         self.timeout = page.timeout
-        self.no_waits = False
+        self.waits_enabled = True
 
     def __repr__(self):
         return f"<{self.__class__.__name__} PageComponent object rooted at {self.by} locator [ {self.locator} ]>"
@@ -152,7 +152,7 @@ class PageComponent(object):
 
     def find_element(self, locator, by=By.CSS_SELECTOR, wait=True, timeout: int=None, visible=True):
         timeout = self.timeout if timeout is None else timeout
-        if wait and not self.no_waits:
+        if wait and self.waits_enabled:
             self.wait_for_element(by=by, locator=locator, timeout=timeout, visible=visible)
         return self.get().find_element(by=by, value=locator)
 

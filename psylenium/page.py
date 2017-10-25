@@ -12,11 +12,11 @@ class DOMObject(object):
     """
     :type elements: dict[str, Element]
     """
-    def __init__(self, *, waits_enabled=True, timeout: int):
+    def __init__(self, *, waits_enabled=True, default_timeout: int):
         self.elements = {}
 
         self.waits_enabled = waits_enabled
-        self.timeout = timeout
+        self.default_timeout = default_timeout
 
     @property
     def _selenium_root(self):
@@ -30,7 +30,7 @@ class DOMObject(object):
     # Accessor methods for the find/visible/exists methods, relative to the class's Selenium root (driver or element).
     # # #
     def wait_for_element(self, locator, *, by=By.CSS_SELECTOR, timeout=None, visible=True):
-        timeout = self.timeout if timeout is None else timeout
+        timeout = self.default_timeout if timeout is None else timeout
         wait_for_element(driver=self._selenium_root, by=by, locator=locator, timeout=timeout, visible=visible)
 
     def wait_until_not_visible(self, locator, *, by=By.CSS_SELECTOR, timeout=2):
@@ -49,11 +49,9 @@ class Page(DOMObject):
     """
 
     def __init__(self, *, driver, url=None, default_timeout=5, waits_enabled=True):
-        super().__init__(waits_enabled=waits_enabled, timeout=default_timeout)
+        super().__init__(waits_enabled=waits_enabled, default_timeout=default_timeout)
         self.driver = driver
         self.url = url
-
-        self.waits_enabled = waits_enabled
 
     def __repr__(self):
         return f"<{self.__class__.__name__} Page object with browser at {self.driver.current_url}>"
@@ -69,7 +67,6 @@ class Page(DOMObject):
 
     def find_element(self, locator, by=By.CSS_SELECTOR, *, wait=True, timeout=None, visible=True):
         by = check_if_by_should_be_xpath(by=by, locator=locator)
-        timeout = self.timeout if timeout is None else timeout
         if wait and self.waits_enabled:
             self.wait_for_element(by=by, locator=locator, timeout=timeout, visible=visible)
         try:
@@ -124,14 +121,12 @@ class PageComponent(DOMObject):
     :type parent_page: Page
     """
 
-    def __init__(self, *, page: Page, locator: str, by=By.CSS_SELECTOR, visible=True):
-        super().__init__(waits_enabled=True, timeout=page.timeout)
+    def __init__(self, *, page: Page, locator: str, by=By.CSS_SELECTOR, visible=True, timeout=None):
+        super().__init__(waits_enabled=True, default_timeout=page.default_timeout if timeout is None else timeout)
         self.parent_page = page
         self.locator = locator
         self.by = by
         self.visible = visible
-
-        self.waits_enabled = True
 
     def __repr__(self):
         return f"<{self.__class__.__name__} PageComponent object rooted at {self.by} locator [ {self.locator} ]>"
@@ -153,11 +148,10 @@ class PageComponent(DOMObject):
 
     def wait_for_self(self, *, timeout: int=None):
         """ Built-in wait method that waits for the PageComponent's root element to appear on the page. """
-        timeout = self.timeout if timeout is None else timeout
-        return self.parent_page.wait_for_element(locator=self.locator, by=self.by, timeout=timeout)
+        timeout = self.default_timeout if timeout is None else timeout
+        return self.parent_page.wait_for_element(locator=self.locator, by=self.by, timeout=timeout, visible=self.visible)
 
     def find_element(self, locator, by=By.CSS_SELECTOR, wait=True, timeout: int=None, visible=True):
-        timeout = self.timeout if timeout is None else timeout
         if wait and self.waits_enabled:
             self.wait_for_element(by=by, locator=locator, timeout=timeout, visible=visible)
         return self.get().find_element(by=by, value=locator)

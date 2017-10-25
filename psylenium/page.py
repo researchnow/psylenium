@@ -8,22 +8,43 @@ from psylenium.element import Element, check_if_by_should_be_xpath, wait_for_ele
     element_exists, is_element_visible
 
 
-class Page(object):
+class DOMObject(object):
     """
-    :type driver: WebDriver
     :type elements: dict[str, Element]
     """
-
-    def __init__(self, driver, url=None, default_timeout=5, waits_enabled=True):
-        self.driver = driver
+    def __init__(self, *, waits_enabled=True, timeout: int):
         self.elements = {}
+
+        self.waits_enabled = waits_enabled
+        self.timeout = timeout
+
+    @property
+    def _selenium_root(self):
+        """ Used to force Selenium methods/waits to work relative to the specified target, instead of giving it the
+         driver and thus searching from the start of the DOM. The Page class will simply return the driver, but
+         PageComponent and SubComponent will return the WebElement representing the HTML element they are rooted at. """
+        raise NotImplementedError("All DOMObject classes must define their Selenium root, which is either the driver,"
+                                  "or the WebElement from the class's root Element.")
+
+
+class Page(DOMObject):
+    """
+    :type driver: WebDriver
+    """
+
+    def __init__(self, *, driver, url=None, default_timeout=5, waits_enabled=True):
+        super().__init__(waits_enabled=waits_enabled, timeout=default_timeout)
+        self.driver = driver
         self.url = url
 
-        self.timeout = default_timeout
         self.waits_enabled = waits_enabled
 
     def __repr__(self):
         return f"<{self.__class__.__name__} Page object with browser at {self.driver.current_url}>"
+
+    @property
+    def _selenium_root(self):
+        return self.driver
 
     def go_to_page(self):
         if not self.url:
@@ -32,16 +53,16 @@ class Page(object):
 
     def wait_for_element(self, locator, *, by=By.CSS_SELECTOR, timeout=None, visible=True):
         timeout = self.timeout if timeout is None else timeout
-        wait_for_element(driver=self.driver, by=by, locator=locator, timeout=timeout, visible=visible)
+        wait_for_element(driver=self._selenium_root, by=by, locator=locator, timeout=timeout, visible=visible)
 
     def wait_until_not_visible(self, locator, *, by=By.CSS_SELECTOR, timeout=2):
-        return wait_until_not_visible(driver=self.driver, by=by, locator=locator, timeout=timeout)
+        return wait_until_not_visible(driver=self._selenium_root, by=by, locator=locator, timeout=timeout)
 
     def is_element_visible(self, locator, *, by=By.CSS_SELECTOR):
-        return is_element_visible(driver=self.driver, by=by, locator=locator)
+        return is_element_visible(driver=self._selenium_root, by=by, locator=locator)
 
     def element_exists(self, locator, by=By.CSS_SELECTOR):
-        return element_exists(driver=self.driver, by=by, locator=locator)
+        return element_exists(driver=self._selenium_root, by=by, locator=locator)
 
     def find_element(self, locator, by=By.CSS_SELECTOR, *, wait=True, timeout=None, visible=True):
         by = check_if_by_should_be_xpath(by=by, locator=locator)
@@ -92,23 +113,21 @@ class Page(object):
         return results
 
 
-class PageComponent(object):
+class PageComponent(DOMObject):
     """ An Element container class similar to the Page class, but smaller in scope - tethered to a single HTML element
      as its root instead of the DOM - and linked to a Page object that represents the DOM. Essentially, this is a
      child class of both Page and Element, so it includes accessors for the methods from Element.
 
     :type parent_page: Page
-    :type elements: dict[str, Element]
     """
 
     def __init__(self, *, page: Page, locator: str, by=By.CSS_SELECTOR, visible=True):
+        super().__init__(waits_enabled=True, timeout=page.timeout)
         self.parent_page = page
         self.locator = locator
         self.by = by
         self.visible = visible
-        self.elements = {}
 
-        self.timeout = page.timeout
         self.waits_enabled = True
 
     def __repr__(self):
@@ -124,7 +143,7 @@ class PageComponent(object):
 
     # noinspection PyProtectedMember
     @property
-    def _root(self):
+    def _selenium_root(self):
         """ Used to force Selenium methods/waits to work relative to the target element, instead of giving it the driver
          and thus searching from the start of the DOM. """
         return self.get()._element
@@ -139,16 +158,16 @@ class PageComponent(object):
     # # #
     def wait_for_element(self, locator, *, by=By.CSS_SELECTOR, timeout: int=None, visible=True):
         timeout = self.timeout if timeout is None else timeout
-        wait_for_element(driver=self._root, by=by, locator=locator, timeout=timeout, visible=visible)
+        wait_for_element(driver=self._selenium_root, by=by, locator=locator, timeout=timeout, visible=visible)
 
     def wait_until_not_visible(self, locator, *, by=By.CSS_SELECTOR, timeout=2):
-        return wait_until_not_visible(driver=self._root, by=by, locator=locator, timeout=timeout)
+        return wait_until_not_visible(driver=self._selenium_root, by=by, locator=locator, timeout=timeout)
 
     def is_element_visible(self, locator, *, by=By.CSS_SELECTOR):
-        return is_element_visible(driver=self._root, by=by, locator=locator)
+        return is_element_visible(driver=self._selenium_root, by=by, locator=locator)
 
     def element_exists(self, locator, by=By.CSS_SELECTOR):
-        return element_exists(driver=self._root, by=by, locator=locator)
+        return element_exists(driver=self._selenium_root, by=by, locator=locator)
 
     def find_element(self, locator, by=By.CSS_SELECTOR, wait=True, timeout: int=None, visible=True):
         timeout = self.timeout if timeout is None else timeout

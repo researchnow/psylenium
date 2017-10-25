@@ -202,6 +202,12 @@ class Element(object):
         chain = ActionChains(self.driver).double_click(self._element)
         chain.perform()
 
+    def get_all_attributes(self):
+        script = "var items = {}; for (index = 0; index < arguments[0].attributes.length; ++index) {" \
+                 "  items[arguments[0].attributes[index].name] = arguments[0].attributes[index].value" \
+                 "}; return items;"
+        self.driver.execute_script(script, self._element)
+
     def apply_style(self, style):
         self.driver.execute_script("arguments[0].setAttribute('style', arguments[1]);", self._element, style)
 

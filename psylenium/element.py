@@ -12,7 +12,7 @@ from selenium.webdriver.support.select import Select
 from selenium.common.exceptions import WebDriverException, TimeoutException, NoSuchElementException, \
     StaleElementReferenceException
 
-from .exceptions import DriverException, TimeOutException
+from psylenium.exceptions import DriverException, TimeOutException
 
 
 def check_if_by_should_be_xpath(*, by: str, locator: str):
@@ -52,11 +52,12 @@ def wait_until_not_visible(*, driver, locator, by=By.CSS_SELECTOR, timeout=10):
             time.sleep(1)
     except (NoSuchElementException, StaleElementReferenceException, TimeoutException, AttributeError):
         return True
-    raise Exception(f"Target element ({by} locator [ {locator} ]) still visible after wait period.")
+    raise Exception(f"Target element ({by} locator [ {locator} ]) still visible after wait period of {timeout}.")
 
 
 def is_element_visible(*, driver, locator, by=By.CSS_SELECTOR):
     """ Checks if an element exists for the given locator, and whether it's displayed. """
+
     by = check_if_by_should_be_xpath(by=by, locator=locator)
     matches = driver.find_elements(by=by, value=locator)
     return any(e.is_displayed() for e in matches)
@@ -64,6 +65,7 @@ def is_element_visible(*, driver, locator, by=By.CSS_SELECTOR):
 
 def element_exists(*, driver, locator, by=By.CSS_SELECTOR):
     """ Checks if an element exists for the given locator. """
+
     by = check_if_by_should_be_xpath(by=by, locator=locator)
     return bool(driver.find_elements(by=by, value=locator))
 
@@ -135,10 +137,10 @@ class Element(object):
     def get_attribute(self, name):
         return self._element.get_attribute(name)
 
-    def is_selected(self):
+    def is_selected(self) -> bool:
         return self._element.is_selected()
 
-    def is_enabled(self):
+    def is_enabled(self) -> bool:
         return self._element.is_enabled()
 
     def send_keys(self, *value):
@@ -147,7 +149,7 @@ class Element(object):
     def dropdown(self):
         return Select(self._element)
 
-    def is_displayed(self):
+    def is_displayed(self) -> bool:
         return self._element.is_displayed()
 
     def value_of_css_property(self, property_name):
@@ -160,6 +162,13 @@ class Element(object):
     @property
     def location(self):
         return self._element.location
+
+    @property
+    def size(self):
+        return self._element.size
+
+    def screenshot(self, file_name):
+        return self._element.screenshot(file_name)
 
     def find_element(self, value: str, *, by=By.CSS_SELECTOR):
         """ Wrapper around the WebElement's find_element that will return an Element instead of a WebElement. Also
@@ -193,20 +202,22 @@ class Element(object):
         chain = ActionChains(self.driver).double_click(self._element)
         chain.perform()
 
+    def apply_style(self, style):
+        self.driver.execute_script("arguments[0].setAttribute('style', arguments[1]);", self._element, style)
+
     def highlight(self):
         """ Highlights (blinks) a Selenium WebDriver element. """
 
-        def apply_style(s):
-            self.driver.execute_script("arguments[0].setAttribute('style', arguments[1]);", self._element, s)
-
         original_style = self._element.get_attribute('style')
-        apply_style("background: yellow; border: 2px solid red;")
+        self.apply_style("background: yellow; border: 2px solid red;")
         time.sleep(.3)
-        apply_style(original_style)
+        self.apply_style(original_style)
 
     def scroll_to(self):
         """ Scrolls to an element. """
         self.driver.execute_script("arguments[0].scrollIntoView()", self._element)
+
+#
 
 
 class SelectElement(Element):

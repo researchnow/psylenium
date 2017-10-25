@@ -34,7 +34,7 @@ class DOMObject(object):
         wait_for_element(driver=self._selenium_root, by=by, locator=locator, timeout=timeout, visible=visible)
 
     def wait_until_not_visible(self, locator, *, by=By.CSS_SELECTOR, timeout=2):
-        return wait_until_not_visible(driver=self._selenium_root, by=by, locator=locator, timeout=timeout)
+        wait_until_not_visible(driver=self._selenium_root, by=by, locator=locator, timeout=timeout)
 
     def is_element_visible(self, locator, *, by=By.CSS_SELECTOR):
         return is_element_visible(driver=self._selenium_root, by=by, locator=locator)
@@ -43,9 +43,11 @@ class DOMObject(object):
         return element_exists(driver=self._selenium_root, by=by, locator=locator)
 
     def find_element(self, locator, *, by=By.CSS_SELECTOR, wait=True, timeout=None, visible=True):
+        """ :rtype: Element """
         raise NotImplementedError("find_element must be implemented by all direct child classes of DOMObject.")
 
     def find_elements(self, locator, by=By.CSS_SELECTOR):
+        """ :rtype: list[Element] """
         raise NotImplementedError("find_elements must be implemented by all direct child classes of DOMObject.")
 
     def element(self, locator, *, by=By.CSS_SELECTOR, visible=True) -> Element:

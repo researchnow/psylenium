@@ -77,7 +77,7 @@ class Page(DOMObject):
     :type driver: WebDriver
     """
 
-    def __init__(self, *, driver, url=None, default_timeout=5, waits_enabled=True):
+    def __init__(self, driver, *, url=None, default_timeout=5, waits_enabled=True):
         super().__init__(waits_enabled=waits_enabled, default_timeout=default_timeout)
         self.driver = driver
         self.url = url
@@ -90,8 +90,8 @@ class Page(DOMObject):
         return self.driver
 
     def go_to_page(self):
-        if not self.url:
-            raise NotImplementedError("No URL defined for this Page class.")
+        if self.url is None:
+            raise RuntimeError("No URL defined for this Page class.")
         self.driver.get(self.url)
 
     def find_element(self, locator, by=By.CSS_SELECTOR, *, wait=True, timeout=None, visible=True):
@@ -160,9 +160,10 @@ class PageComponent(DOMObject):
     def driver(self):
         return self.parent_page.driver
 
-    def get(self) -> Element:
+    def get(self, visible: bool=None) -> Element:
         """ Retrieval method for the Element that represents the root of this part of the page. """
-        return self.parent_page.element(by=self.by, locator=self.locator, visible=self.visible)
+        visible = self.visible if visible is None else visible
+        return self.parent.element(by=self.by, locator=self.locator, visible=visible)
 
     def wait_for_self(self, *, timeout: int=None):
         """ Built-in wait method that waits for the PageComponent's root element to appear on the page. """
@@ -198,7 +199,7 @@ class PageComponent(DOMObject):
         return self.get().is_enabled()
 
     def is_displayed(self):
-        return self.get().is_displayed()
+        return self.get(visible=False).is_displayed()
 
     def send_keys(self, *value):
         return self.get().send_keys(*value)
@@ -222,5 +223,6 @@ class SubComponent(PageComponent):
         return f"<{self.__class__.__name__} SubComponent object rooted at {self.by} locator [ {self.locator}, under " \
                f"PageComponent {self.parent.__class__.__name__} ]>"
 
-    def get(self):
-        return self.parent.element(by=self.by, locator=self.locator)
+    def get(self, visible: bool=None):
+        visible = self.visible if visible is None else visible
+        return self.parent.element(by=self.by, locator=self.locator, visible=visible)

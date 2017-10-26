@@ -136,12 +136,14 @@ class PageComponent(DOMObject):
      as its root instead of the DOM - and linked to a Page object that represents the DOM. Essentially, this is a
      child class of both Page and Element, so it includes accessors for the methods from Element.
 
-    :type parent_page: Page
+    :type parent: DOMObject
     """
 
-    def __init__(self, *, page: Page, locator: str, by=By.CSS_SELECTOR, visible=True, timeout=None):
-        super().__init__(waits_enabled=True, default_timeout=page.default_timeout if timeout is None else timeout)
-        self.parent_page = page
+    def __init__(self, parent: DOMObject, *, locator: str, by=By.CSS_SELECTOR, visible=True, default_timeout: int=None,
+                 waits_enabled=True):
+        default_timeout = parent.default_timeout if default_timeout is None else default_timeout
+        super().__init__(waits_enabled=waits_enabled, default_timeout=default_timeout)
+        self.parent = parent
         self.locator = locator
         self.by = by
         self.visible = visible
@@ -157,6 +159,15 @@ class PageComponent(DOMObject):
         return self.get()._element
 
     @property
+    def parent_page(self):
+        """ Accessor for the Page; for nested PageComponents, it's recursive. """
+        if isinstance(self.parent, Page):
+            return self.parent
+        elif isinstance(self.parent, PageComponent):
+            return self.parent.parent_page
+        raise RuntimeError("Unexpected state; parent should only be a Page or PageComponent.")
+
+    @property
     def driver(self):
         return self.parent_page.driver
 
@@ -168,7 +179,7 @@ class PageComponent(DOMObject):
     def wait_for_self(self, *, timeout: int=None):
         """ Built-in wait method that waits for the PageComponent's root element to appear on the page. """
         timeout = self.default_timeout if timeout is None else timeout
-        return self.parent_page.wait_for_element(locator=self.locator, by=self.by, timeout=timeout, visible=self.visible)
+        self.parent.wait_for_element(locator=self.locator, by=self.by, timeout=timeout, visible=self.visible)
 
     def find_element(self, locator, *, by=By.CSS_SELECTOR, wait=True, timeout: int=None, visible=True):
         """ Invokes find_element against the root Element, which will only search from that DOM element downward
@@ -212,12 +223,12 @@ class SubComponent(PageComponent):
     """ An extension of the PageComponent class that is built for nesting components. Tied to a PageComponent parent
     instead of the overall Page.
 
-    :type parent: PageComponent
+    :type parent: DOMObject
     """
 
-    def __init__(self, *, parent: PageComponent, locator: str, by=By.CSS_SELECTOR, visible=True):
+    def __init__(self, *, parent, locator: str, by=By.CSS_SELECTOR, visible=True):
         self.parent = parent
-        super().__init__(page=parent.parent_page, locator=locator, by=by, visible=visible)
+        super().__init__(parent=parent.parent_page, locator=locator, by=by, visible=visible)
 
     def __repr__(self):
         return f"<{self.__class__.__name__} SubComponent object rooted at {self.by} locator [ {self.locator}, under " \

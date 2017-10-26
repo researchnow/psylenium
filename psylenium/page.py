@@ -149,7 +149,10 @@ class PageComponent(DOMObject):
         self.visible = visible
 
     def __repr__(self):
-        return f"<{self.__class__.__name__} PageComponent object rooted at {self.by} locator [ {self.locator} ]>"
+        string = f"{self.__class__.__name__} PageComponent object rooted at {self.by} locator [ {self.locator} ]"
+        if isinstance(self.parent, PageComponent):
+            return f"<{string}, within {self.parent.__class__.__name__} PageComponent>"
+        return f"<{string}>"
 
     # noinspection PyProtectedMember
     @property
@@ -217,23 +220,3 @@ class PageComponent(DOMObject):
 
     def set_value(self, text, *, tab=False):
         return self.get().set_value(text=text, tab=tab)
-
-
-class SubComponent(PageComponent):
-    """ An extension of the PageComponent class that is built for nesting components. Tied to a PageComponent parent
-    instead of the overall Page.
-
-    :type parent: DOMObject
-    """
-
-    def __init__(self, *, parent, locator: str, by=By.CSS_SELECTOR, visible=True):
-        self.parent = parent
-        super().__init__(parent=parent.parent_page, locator=locator, by=by, visible=visible)
-
-    def __repr__(self):
-        return f"<{self.__class__.__name__} SubComponent object rooted at {self.by} locator [ {self.locator}, under " \
-               f"PageComponent {self.parent.__class__.__name__} ]>"
-
-    def get(self, visible: bool=None):
-        visible = self.visible if visible is None else visible
-        return self.parent.element(by=self.by, locator=self.locator, visible=visible)

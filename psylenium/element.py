@@ -160,6 +160,13 @@ class Element(object):
         return self._element.get_attribute('value')
 
     @property
+    def classes(self):
+        classes = self.get_attribute("class")
+        if classes is None:
+            return None
+        return classes.split(" ")
+
+    @property
     def location(self):
         return self._element.location
 
@@ -222,8 +229,6 @@ class Element(object):
     def scroll_to(self):
         """ Scrolls to an element. """
         self.driver.execute_script("arguments[0].scrollIntoView()", self._element)
-
-#
 
 
 class SelectElement(Element):

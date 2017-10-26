@@ -50,7 +50,7 @@ class DOMObject(object):
         """ :rtype: list[Element] """
         raise NotImplementedError("find_elements must be implemented by all direct child classes of DOMObject.")
 
-    def element(self, locator, *, by=By.CSS_SELECTOR, visible=True) -> Element:
+    def element(self, locator, *, by=By.CSS_SELECTOR, visible=False) -> Element:
         """ Retrieval method for accessing Element objects on the page. It is the underlying method called by any
         property elements on DOMObject classes; it checks its storage dict for the element in case it's already been
         accessed, and also checks if that element is still valid. If either of those checks fail, it looks up a new

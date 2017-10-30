@@ -18,7 +18,7 @@ setup(
     version='1.1.0',
     description='Core Selenium functionality supporting automated UI testing',
     long_description=long_description,
-    url='https://github.com/researchnow/pysts',
+    url='https://github.com/researchnow/psylenium',
     author='Michael Partlo',
     author_email='mpartlo@researchnow.com',
 

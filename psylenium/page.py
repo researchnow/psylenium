@@ -22,7 +22,7 @@ class DOMObject(object):
     def _selenium_root(self):
         """ Used to force Selenium methods/waits to work relative to the specified target, instead of giving it the
          driver and thus searching from the start of the DOM. The Page class will simply return the driver, but
-         PageComponent and SubComponent will return the WebElement representing the HTML element they are rooted at. """
+         PageComponent will return the WebElement representing the HTML element they are rooted at. """
         raise NotImplementedError("All DOMObject classes must define their Selenium root, which is either the driver,"
                                   "or the WebElement from the class's root Element.")
 
@@ -33,7 +33,7 @@ class DOMObject(object):
         timeout = self.default_timeout if timeout is None else timeout
         wait_for_element(driver=self._selenium_root, by=by, locator=locator, timeout=timeout, visible=visible)
 
-    def wait_until_not_visible(self, locator, *, by=By.CSS_SELECTOR, timeout=2):
+    def wait_until_not_visible(self, locator, *, by=By.CSS_SELECTOR, timeout=5):
         wait_until_not_visible(driver=self._selenium_root, by=by, locator=locator, timeout=timeout)
 
     def is_element_visible(self, locator, *, by=By.CSS_SELECTOR):
@@ -56,7 +56,7 @@ class DOMObject(object):
         accessed, and also checks if that element is still valid. If either of those checks fail, it looks up a new
         Element and stores it before returning.
 
-        The actual implementation of how the DOMObject looks up new Elements will differe between child classes.
+        The actual implementation of how the DOMObject looks up new Elements will differ between child classes.
 
         This function works the same as the Page class's element() method, except that it will invoke find_element()
         against the PageComponent's root Element object. This will only search from that DOM element downward instead
@@ -96,8 +96,8 @@ class Page(DOMObject):
 
     def find_element(self, locator, by=By.CSS_SELECTOR, *, wait=True, timeout=None, visible=True):
         """ Invokes `find_element` against the driver, which searches throughout the entire DOM. For all other DOMObject
-         child classes (PageComponent & SubComponent), they should only ever invoke the `find_element` of their root
-         Element class instead of the driver. """
+         child classes, they should only ever invoke the `find_element` of their root Element class instead of the
+         driver. """
 
         by = check_if_by_should_be_xpath(by=by, locator=locator)
         if wait and self.waits_enabled:

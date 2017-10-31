@@ -12,10 +12,10 @@ from selenium.webdriver.support.select import Select
 from selenium.common.exceptions import WebDriverException, TimeoutException, NoSuchElementException, \
     StaleElementReferenceException
 
-from .exceptions import DriverException, TimeOutException
+from psylenium.exceptions import DriverException, TimeOutException
 
 
-def check_xpath_by(*, by: str, locator: str):
+def check_if_by_should_be_xpath(*, by: str, locator: str):
     """ Checks the given locator to see if it is an XPATH, and overrides the given 'by' argument if it is. """
 
     if by == By.CSS_SELECTOR:
@@ -28,7 +28,7 @@ def wait_for_element(*, driver, locator, by=By.CSS_SELECTOR, timeout=10, visible
     """ Waits for a given element as defined by the 'by' and 'locator' arguments. Raises a TimeOutException instead of
      a TimeoutException in order to prevent the extra Selenium traceback. """
 
-    by = check_xpath_by(by=by, locator=locator)
+    by = check_if_by_should_be_xpath(by=by, locator=locator)
     try:
         if visible:
             WebDriverWait(driver, timeout).until(EC.visibility_of_element_located((by, locator)))
@@ -44,7 +44,7 @@ def wait_until_not_visible(*, driver, locator, by=By.CSS_SELECTOR, timeout=10):
     """ Waits until the given element (as defined by the 'by' and 'locator' arguments) is no longer visible - i.e.
     loading icons, etc. """
 
-    by = check_xpath_by(by=by, locator=locator)
+    by = check_if_by_should_be_xpath(by=by, locator=locator)
     try:
         for _ in range(timeout):
             if not driver.find_element(by=by, value=locator).is_displayed():
@@ -52,17 +52,22 @@ def wait_until_not_visible(*, driver, locator, by=By.CSS_SELECTOR, timeout=10):
             time.sleep(1)
     except (NoSuchElementException, StaleElementReferenceException, TimeoutException, AttributeError):
         return True
-    raise Exception(f"Target element ({by} locator [ {locator} ]) still visible after wait period.")
+    raise Exception(f"Target element ({by} locator [ {locator} ]) still visible after wait period of {timeout}.")
 
 
-# TODO: Review this; should it be checking displayed?
+def is_element_visible(*, driver, locator, by=By.CSS_SELECTOR):
+    """ Checks if an element exists for the given locator, and whether it's displayed. """
+
+    by = check_if_by_should_be_xpath(by=by, locator=locator)
+    matches = driver.find_elements(by=by, value=locator)
+    return any(e.is_displayed() for e in matches)
+
+
 def element_exists(*, driver, locator, by=By.CSS_SELECTOR):
-    """ Checks if an element exists for the given locator, and whether it's displayed"""
-    by = check_xpath_by(by=by, locator=locator)
-    for e in driver.find_elements(by=by, value=locator):
-        if e.is_displayed():
-            return True
-    return False
+    """ Checks if an element exists for the given locator. """
+
+    by = check_if_by_should_be_xpath(by=by, locator=locator)
+    return bool(driver.find_elements(by=by, value=locator))
 
 
 class Element(object):
@@ -132,10 +137,10 @@ class Element(object):
     def get_attribute(self, name):
         return self._element.get_attribute(name)
 
-    def is_selected(self):
+    def is_selected(self) -> bool:
         return self._element.is_selected()
 
-    def is_enabled(self):
+    def is_enabled(self) -> bool:
         return self._element.is_enabled()
 
     def send_keys(self, *value):
@@ -144,7 +149,7 @@ class Element(object):
     def dropdown(self):
         return Select(self._element)
 
-    def is_displayed(self):
+    def is_displayed(self) -> bool:
         return self._element.is_displayed()
 
     def value_of_css_property(self, property_name):
@@ -155,14 +160,28 @@ class Element(object):
         return self._element.get_attribute('value')
 
     @property
+    def classes(self):
+        classes = self.get_attribute("class")
+        if classes is None:
+            return None
+        return classes.split(" ")
+
+    @property
     def location(self):
         return self._element.location
+
+    @property
+    def size(self):
+        return self._element.size
+
+    def screenshot(self, file_name):
+        return self._element.screenshot(file_name)
 
     def find_element(self, value: str, *, by=By.CSS_SELECTOR):
         """ Wrapper around the WebElement's find_element that will return an Element instead of a WebElement. Also
         catches any Selenium errors and raises them without the excess traceback. """
 
-        by = check_xpath_by(by=by, locator=value)
+        by = check_if_by_should_be_xpath(by=by, locator=value)
         try:
             new_element = self._element.find_element(by=by, value=value)
         except Exception as e:
@@ -170,7 +189,7 @@ class Element(object):
         return Element(by=by, locator=value, web_element=new_element, parent=self._element)
 
     def find_elements(self, value: str, *, by=By.CSS_SELECTOR):
-        by = check_xpath_by(by=by, locator=value)
+        by = check_if_by_should_be_xpath(by=by, locator=value)
         new_elements = self._element.find_elements(by=by, value=value)
         return [Element(by=by, locator=value, web_element=e, parent=self._element) for e in new_elements]
 
@@ -190,16 +209,22 @@ class Element(object):
         chain = ActionChains(self.driver).double_click(self._element)
         chain.perform()
 
+    def get_all_attributes(self):
+        script = "var items = {}; for (index = 0; index < arguments[0].attributes.length; ++index) {" \
+                 "  items[arguments[0].attributes[index].name] = arguments[0].attributes[index].value" \
+                 "}; return items;"
+        self.driver.execute_script(script, self._element)
+
+    def apply_style(self, style):
+        self.driver.execute_script("arguments[0].setAttribute('style', arguments[1]);", self._element, style)
+
     def highlight(self):
         """ Highlights (blinks) a Selenium WebDriver element. """
 
-        def apply_style(s):
-            self.driver.execute_script("arguments[0].setAttribute('style', arguments[1]);", self._element, s)
-
         original_style = self._element.get_attribute('style')
-        apply_style("background: yellow; border: 2px solid red;")
+        self.apply_style("background: yellow; border: 2px solid red;")
         time.sleep(.3)
-        apply_style(original_style)
+        self.apply_style(original_style)
 
     def scroll_to(self):
         """ Scrolls to an element. """

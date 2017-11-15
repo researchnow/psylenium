@@ -122,6 +122,7 @@ class Element(object):
             print(e)
             if "Other element would receive the click" in str(e) and retry:
                 time.sleep(2)
+                self.scroll_to()
                 return self.click(wait=wait, timeout=timeout, offset=offset, retry=False)
             raise DriverException(e.__class__.__name__, str(e)) from None
 

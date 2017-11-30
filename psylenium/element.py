@@ -156,7 +156,7 @@ class Element(object):
 
     def is_enabled(self) -> bool:
         try:
-            return self.web_element.is_enabled()
+            return self._element.is_enabled()
         except NoSuchElementException:
             return False
 

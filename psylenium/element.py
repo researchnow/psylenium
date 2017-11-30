@@ -91,6 +91,19 @@ class Element(object):
         return super().__eq__(other)
 
     @property
+    def web_element(self) -> WebElement:
+        """ Accessor method for the underlying WebElement, in order to prevent a StaleElementReferenceException from
+         occurring in the milliseconds between instantiation and accessing a method. """
+        try:
+            self._element.is_enabled()
+        except StaleElementReferenceException:
+            try:
+                self._element = self.driver.find_element(value=self.locator, by=self.by)
+            except Exception as e:
+                raise DriverException(e.__class__.__name__, str(e)) from None
+        return self._element
+
+    @property
     def driver(self):
         return self._element.parent
 
@@ -100,18 +113,18 @@ class Element(object):
 
     @property
     def tag_name(self):
-        return self._element.tag_name
+        return self.web_element.tag_name
 
     @property
     def text(self):
-        return self._element.text
+        return self.web_element.text
 
     # Wrapper methods around the actual WebElement's methods, allowing us to access them without using _element and also
     # to modify them when we need to.
     def click(self, *, wait=True, timeout=10, offset=0, retry=True):
         try:
             if not wait:
-                return self._element.click()
+                return self.web_element.click()
 
             clickable = WebDriverWait(self.parent, timeout).until(EC.element_to_be_clickable((self.by, self.locator)))
             if offset:
@@ -127,38 +140,44 @@ class Element(object):
             raise DriverException(e.__class__.__name__, str(e)) from None
 
     def submit(self):
-        self._element.submit()
+        self.web_element.submit()
 
     def clear(self):
-        self._element.clear()
+        self.web_element.clear()
 
     def get_property(self, name):
-        return self._element.get_property(name)
+        return self.web_element.get_property(name)
 
     def get_attribute(self, name):
-        return self._element.get_attribute(name)
+        return self.web_element.get_attribute(name)
 
     def is_selected(self) -> bool:
-        return self._element.is_selected()
+        return self.web_element.is_selected()
 
     def is_enabled(self) -> bool:
-        return self._element.is_enabled()
+        try:
+            return self.web_element.is_enabled()
+        except NoSuchElementException:
+            return False
 
     def send_keys(self, *value):
-        self._element.send_keys(*value)
+        self.web_element.send_keys(*value)
 
     def dropdown(self):
-        return Select(self._element)
+        return Select(self.web_element)
 
     def is_displayed(self) -> bool:
-        return self._element.is_displayed()
+        try:
+            return self.web_element.is_displayed()
+        except NoSuchElementException:
+            return False
 
     def value_of_css_property(self, property_name):
-        return self._element.value_of_css_property(property_name)
+        return self.web_element.value_of_css_property(property_name)
 
     @property
     def value(self):
-        return self._element.get_attribute('value')
+        return self.web_element.get_attribute('value')
 
     @property
     def classes(self):
@@ -169,14 +188,14 @@ class Element(object):
 
     @property
     def location(self):
-        return self._element.location
+        return self.web_element.location
 
     @property
     def size(self):
-        return self._element.size
+        return self.web_element.size
 
     def screenshot(self, file_name):
-        return self._element.screenshot(file_name)
+        return self.web_element.screenshot(file_name)
 
     def find_element(self, value: str, *, by=By.CSS_SELECTOR):
         """ Wrapper around the WebElement's find_element that will return an Element instead of a WebElement. Also
@@ -184,14 +203,14 @@ class Element(object):
 
         by = check_if_by_should_be_xpath(by=by, locator=value)
         try:
-            new_element = self._element.find_element(by=by, value=value)
+            new_element = self.web_element.find_element(by=by, value=value)
         except Exception as e:
             raise DriverException(e.__class__.__name__, str(e)) from None
         return Element(by=by, locator=value, web_element=new_element, parent=self._element)
 
     def find_elements(self, value: str, *, by=By.CSS_SELECTOR):
         by = check_if_by_should_be_xpath(by=by, locator=value)
-        new_elements = self._element.find_elements(by=by, value=value)
+        new_elements = self.web_element.find_elements(by=by, value=value)
         return [Element(by=by, locator=value, web_element=e, parent=self._element) for e in new_elements]
 
     # Other methods
@@ -203,33 +222,33 @@ class Element(object):
             self.send_keys(Keys.TAB)
 
     def hover(self):
-        hover = ActionChains(self.driver).move_to_element(self._element)
+        hover = ActionChains(self.driver).move_to_element(self.web_element)
         hover.perform()
 
     def double_click(self):
-        chain = ActionChains(self.driver).double_click(self._element)
+        chain = ActionChains(self.driver).double_click(self.web_element)
         chain.perform()
 
     def get_all_attributes(self):
         script = "var items = {}; for (index = 0; index < arguments[0].attributes.length; ++index) {" \
                  "  items[arguments[0].attributes[index].name] = arguments[0].attributes[index].value" \
                  "}; return items;"
-        self.driver.execute_script(script, self._element)
+        self.driver.execute_script(script, self.web_element)
 
     def apply_style(self, style):
-        self.driver.execute_script("arguments[0].setAttribute('style', arguments[1]);", self._element, style)
+        self.driver.execute_script("arguments[0].setAttribute('style', arguments[1]);", self.web_element, style)
 
     def highlight(self):
         """ Highlights (blinks) a Selenium WebDriver element. """
 
-        original_style = self._element.get_attribute('style')
+        original_style = self.web_element.get_attribute('style')
         self.apply_style("background: yellow; border: 2px solid red;")
         time.sleep(.3)
         self.apply_style(original_style)
 
     def scroll_to(self):
         """ Scrolls to an element. """
-        self.driver.execute_script("arguments[0].scrollIntoView()", self._element)
+        self.driver.execute_script("arguments[0].scrollIntoView()", self.web_element)
 
 
 class SelectElement(Element):

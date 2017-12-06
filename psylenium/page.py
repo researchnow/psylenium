@@ -94,6 +94,10 @@ class Page(DOMObject):
             raise RuntimeError("No URL defined for this Page class.")
         self.driver.get(self.url)
 
+    @property
+    def current_url(self):
+        return self.driver.current_url
+
     def find_element(self, locator, by=By.CSS_SELECTOR, *, wait=True, timeout=None, visible=True):
         """ Invokes `find_element` against the driver, which searches throughout the entire DOM. For all other DOMObject
          child classes, they should only ever invoke the `find_element` of their root Element class instead of the

@@ -15,7 +15,7 @@ install_reqs = parse_requirements('requirements.txt', session='hack')
 
 setup(
     name='psylenium',
-    version='1.1.0',
+    version='1.1.1',
     description='Core Selenium functionality supporting automated UI testing',
     long_description=long_description,
     url='https://github.com/researchnow/psylenium',

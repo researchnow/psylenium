@@ -90,6 +90,12 @@ class Element(object):
             return self.text == str(other)
         return super().__eq__(other)
 
+    def __int__(self):
+        if isinstance(self.text, str):
+            if self.text.isdigit():
+                return int(self.text)
+        raise TypeError(f"Cannot convert Element text to an integer: < {self.text} >")
+
     @property
     def web_element(self) -> WebElement:
         """ Accessor method for the underlying WebElement, in order to prevent a StaleElementReferenceException from

@@ -188,10 +188,10 @@ class PageComponent(DOMObject):
         timeout = self.default_timeout if timeout is None else timeout
         self.parent.wait_for_element(locator=self.locator, by=self.by, timeout=timeout, visible=self.visible)
 
-    def wait_until_absent(self, *, timeout: int = None):
+    def wait_until_absent(self, *, timeout: int=None):
         """ The reverse of wait_for_self; waits until the root element is no longer present/visible. """
         timeout = self.default_timeout if timeout is None else timeout
-        self.wait_until_not_visible(locator="/.", timeout=timeout)
+        self.parent.wait_until_not_visible(locator=self.locator, by=self.by, timeout=timeout)
 
     def find_element(self, locator, *, by=By.CSS_SELECTOR, wait=True, timeout: int=None, visible=True):
         """ Invokes find_element against the root Element, which will only search from that DOM element downward

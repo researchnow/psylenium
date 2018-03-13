@@ -71,6 +71,11 @@ class DOMObject(object):
             self.elements[locator] = self.find_element(by=by, locator=locator, visible=visible)
         return self.elements[locator]
 
+    def clear_existing_element_indices(self, locator):
+        old_locators = [k for k in self.elements if k.startswith(locator)]
+        for old in old_locators:
+            self.elements.pop(old)
+
 
 class Page(DOMObject):
     """

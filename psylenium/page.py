@@ -42,7 +42,7 @@ class DOMObject(object):
     def element_exists(self, locator, by=By.CSS_SELECTOR):
         return element_exists(driver=self._selenium_root, by=by, locator=locator)
 
-    def find_element(self, locator, *, by=By.CSS_SELECTOR, wait=True, timeout: int=None, visible=True):
+    def find_element(self, locator, *, by=By.CSS_SELECTOR, wait=True, timeout: int=None, visible=True, custom_class=None):
         """ :rtype: Element """
         raise NotImplementedError("find_element must be implemented by all direct child classes of DOMObject.")
 
@@ -50,7 +50,7 @@ class DOMObject(object):
         """ :rtype: list[Element] """
         raise NotImplementedError("find_elements must be implemented by all direct child classes of DOMObject.")
 
-    def element(self, locator, *, by=By.CSS_SELECTOR, visible=False) -> Element:
+    def element(self, locator, *, by=By.CSS_SELECTOR, visible=False, custom_class=None) -> Element:
         """ Retrieval method for accessing Element objects on the page. It is the underlying method called by any
         property elements on DOMObject classes; it checks its storage dict for the element in case it's already been
         accessed, and also checks if that element is still valid. If either of those checks fail, it looks up a new
@@ -68,7 +68,7 @@ class DOMObject(object):
             except StaleElementReferenceException:
                 self.elements.pop(locator)
         if not self.elements.get(locator):
-            self.elements[locator] = self.find_element(by=by, locator=locator, visible=visible)
+            self.elements[locator] = self.find_element(by=by, locator=locator, visible=visible, custom_class=custom_class)
         return self.elements[locator]
 
     def clear_existing_element_indices(self, locator):

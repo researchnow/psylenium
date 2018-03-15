@@ -1,7 +1,8 @@
 from selenium.webdriver.remote.webdriver import WebDriver
 from selenium.webdriver.common.by import By
-
 from selenium.common.exceptions import StaleElementReferenceException
+
+from typing import Any
 
 from psylenium.element import Element, check_if_by_should_be_xpath, wait_for_element, wait_until_not_visible, \
     element_exists, is_element_visible
@@ -70,6 +71,11 @@ class DOMObject(object):
         if not self.elements.get(locator):
             self.elements[locator] = self.find_element(by=by, locator=locator, visible=visible, custom_class=custom_class)
         return self.elements[locator]
+
+    def special_element(self, locator, *, by=By.CSS_SELECTOR, visible=False, custom_class=None) -> Any:
+        """ Call this instead of element() if you use 'custom_class'. That way, element() can still be type-locked to
+        Element, but you won't trigger a type-checker PyCharm warning when you type-annotate the caller. """
+        return self.element(locator=locator, by=by, visible=visible, custom_class=custom_class)
 
     def clear_existing_element_indices(self, locator):
         old_locators = [k for k in self.elements if k.startswith(locator)]

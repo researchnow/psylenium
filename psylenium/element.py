@@ -262,10 +262,11 @@ class Element(object):
 
 
 class SelectElement(Element):
-    """ An extension of the Element class that replicates the Select class from Selenium. """
+    """ An extension of the Element class that replicates the Select class from Selenium. Call element() on a DOMObject
+    with the argument 'custom_class=SelectElement' to instantiate one in place of a standard Element. """
 
-    def __init__(self, normal_element: Element):
-        super().__init__(by=normal_element.by, locator=normal_element.locator, web_element=normal_element._element)
+    def __init__(self, *, by: str, locator: str, web_element: WebElement, parent=None):
+        super().__init__(by=by, locator=locator, web_element=web_element, parent=parent)
         self._select = Select(self._element)
 
     def select_text(self, text):

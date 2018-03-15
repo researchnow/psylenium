@@ -4,8 +4,8 @@ from selenium.common.exceptions import StaleElementReferenceException
 
 from typing import Any
 
-from psylenium.element import Element, check_if_by_should_be_xpath, wait_for_element, wait_until_not_visible, \
-    element_exists, is_element_visible
+from psylenium.element import Element, SelectElement, check_if_by_should_be_xpath, wait_for_element,\
+    wait_until_not_visible, element_exists, is_element_visible
 from psylenium.exceptions import DriverException
 
 
@@ -72,7 +72,11 @@ class DOMObject(object):
             self.elements[locator] = self.find_element(by=by, locator=locator, visible=visible, custom_class=custom_class)
         return self.elements[locator]
 
-    def special_element(self, locator, *, by=By.CSS_SELECTOR, visible=False, custom_class=None) -> Any:
+    # noinspection PyTypeChecker
+    def select_element(self, locator, *, by=By.CSS_SELECTOR, visible=False) -> SelectElement:
+        return self.element(locator=locator, by=by, visible=visible, custom_class=SelectElement)
+
+    def special_element(self, custom_class, locator, *, by=By.CSS_SELECTOR, visible=False) -> Any:
         """ Call this instead of element() if you use 'custom_class'. That way, element() can still be type-locked to
         Element, but you won't trigger a type-checker PyCharm warning when you type-annotate the caller. """
         return self.element(locator=locator, by=by, visible=visible, custom_class=custom_class)

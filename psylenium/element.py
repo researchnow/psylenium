@@ -203,15 +203,24 @@ class Element(object):
     def screenshot(self, file_name):
         return self.web_element.screenshot(file_name)
 
-    def find_element(self, value: str, *, by=By.CSS_SELECTOR):
-        """ Wrapper around the WebElement's find_element that will return an Element instead of a WebElement. Also
-        catches any Selenium errors and raises them without the excess traceback. """
+    def _find_element(self, value: str, *, by=By.CSS_SELECTOR):
+        """ Wrapper around the WebElement's find_element. Catches any Selenium errors and raises them without the excess
+         traceback. Meant to be called by find_element(), but can be called to generate extensions of the Element class.
+
+        :rtype: (str, str, WebElement, Element) """
 
         by = check_if_by_should_be_xpath(by=by, locator=value)
         try:
             new_element = self.web_element.find_element(by=by, value=value)
         except Exception as e:
             raise DriverException(e.__class__.__name__, str(e)) from None
+        return by, value, new_element, self._element
+
+    def find_element(self, value: str, *, by=By.CSS_SELECTOR):
+        """ Wrapper around the WebElement's find_element that will return an Element instead of a WebElement. Also
+        catches any Selenium errors and raises them without the excess traceback. """
+
+        by, value, new_element, _ = self._find_element(value=value, by=by)
         return Element(by=by, locator=value, web_element=new_element, parent=self._element)
 
     def find_elements(self, value: str, *, by=By.CSS_SELECTOR):

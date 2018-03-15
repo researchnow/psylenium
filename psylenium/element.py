@@ -203,21 +203,25 @@ class Element(object):
     def screenshot(self, file_name):
         return self.web_element.screenshot(file_name)
 
-    def find_element(self, value: str, *, by=By.CSS_SELECTOR):
+    def find_element(self, value: str, *, by=By.CSS_SELECTOR, custom_class=None):
         """ Wrapper around the WebElement's find_element that will return an Element instead of a WebElement. Also
-        catches any Selenium errors and raises them without the excess traceback. """
+        catches any Selenium errors and raises them without the excess traceback.
+
+        :rtype: Element """
 
         by = check_if_by_should_be_xpath(by=by, locator=value)
         try:
             new_element = self.web_element.find_element(by=by, value=value)
         except Exception as e:
             raise DriverException(e.__class__.__name__, str(e)) from None
-        return Element(by=by, locator=value, web_element=new_element, parent=self._element)
+        return (custom_class or Element)(by=by, locator=value, web_element=new_element, parent=self._element)
 
-    def find_elements(self, value: str, *, by=By.CSS_SELECTOR):
+    def find_elements(self, value: str, *, by=By.CSS_SELECTOR, custom_class=None):
+        """ :rtype: list[Element] """
         by = check_if_by_should_be_xpath(by=by, locator=value)
         new_elements = self.web_element.find_elements(by=by, value=value)
-        return [Element(by=by, locator=value, web_element=e, parent=self._element) for e in new_elements]
+        cls = custom_class or Element
+        return [cls(by=by, locator=value, web_element=e, parent=self._element) for e in new_elements]
 
     # Other methods
     def set_value(self, text, *, tab=False):
@@ -258,10 +262,11 @@ class Element(object):
 
 
 class SelectElement(Element):
-    """ An extension of the Element class that replicates the Select class from Selenium. """
+    """ An extension of the Element class that replicates the Select class from Selenium. Call element() on a DOMObject
+    with the argument 'custom_class=SelectElement' to instantiate one in place of a standard Element. """
 
-    def __init__(self, normal_element: Element):
-        super().__init__(by=normal_element.by, locator=normal_element.locator, web_element=normal_element._element)
+    def __init__(self, *, by: str, locator: str, web_element: WebElement, parent=None):
+        super().__init__(by=by, locator=locator, web_element=web_element, parent=parent)
         self._select = Select(self._element)
 
     def select_text(self, text):

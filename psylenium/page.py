@@ -1,7 +1,8 @@
 from selenium.webdriver.remote.webdriver import WebDriver
 from selenium.webdriver.common.by import By
-
 from selenium.common.exceptions import StaleElementReferenceException
+
+from typing import Any
 
 from psylenium.element import Element, check_if_by_should_be_xpath, wait_for_element, wait_until_not_visible, \
     element_exists, is_element_visible
@@ -42,15 +43,15 @@ class DOMObject(object):
     def element_exists(self, locator, by=By.CSS_SELECTOR):
         return element_exists(driver=self._selenium_root, by=by, locator=locator)
 
-    def find_element(self, locator, *, by=By.CSS_SELECTOR, wait=True, timeout=None, visible=True):
+    def find_element(self, locator, *, by=By.CSS_SELECTOR, wait=True, timeout: int=None, visible=True, custom_class=None):
         """ :rtype: Element """
         raise NotImplementedError("find_element must be implemented by all direct child classes of DOMObject.")
 
-    def find_elements(self, locator, by=By.CSS_SELECTOR):
+    def find_elements(self, locator, *, by=By.CSS_SELECTOR):
         """ :rtype: list[Element] """
         raise NotImplementedError("find_elements must be implemented by all direct child classes of DOMObject.")
 
-    def element(self, locator, *, by=By.CSS_SELECTOR, visible=False) -> Element:
+    def element(self, locator, *, by=By.CSS_SELECTOR, visible=False, custom_class=None) -> Element:
         """ Retrieval method for accessing Element objects on the page. It is the underlying method called by any
         property elements on DOMObject classes; it checks its storage dict for the element in case it's already been
         accessed, and also checks if that element is still valid. If either of those checks fail, it looks up a new
@@ -68,8 +69,13 @@ class DOMObject(object):
             except StaleElementReferenceException:
                 self.elements.pop(locator)
         if not self.elements.get(locator):
-            self.elements[locator] = self.find_element(by=by, locator=locator, visible=visible)
+            self.elements[locator] = self.find_element(by=by, locator=locator, visible=visible, custom_class=custom_class)
         return self.elements[locator]
+
+    def special_element(self, locator, *, by=By.CSS_SELECTOR, visible=False, custom_class=None) -> Any:
+        """ Call this instead of element() if you use 'custom_class'. That way, element() can still be type-locked to
+        Element, but you won't trigger a type-checker PyCharm warning when you type-annotate the caller. """
+        return self.element(locator=locator, by=by, visible=visible, custom_class=custom_class)
 
     def clear_existing_element_indices(self, locator):
         old_locators = [k for k in self.elements if k.startswith(locator)]
@@ -103,7 +109,7 @@ class Page(DOMObject):
     def current_url(self):
         return self.driver.current_url
 
-    def find_element(self, locator, by=By.CSS_SELECTOR, *, wait=True, timeout=None, visible=True):
+    def find_element(self, locator, by=By.CSS_SELECTOR, *, wait=True, timeout=None, visible=True, custom_class=None):
         """ Invokes `find_element` against the driver, which searches throughout the entire DOM. For all other DOMObject
          child classes, they should only ever invoke the `find_element` of their root Element class instead of the
          driver. """
@@ -115,12 +121,12 @@ class Page(DOMObject):
             element = self.driver.find_element(by=by, value=locator)
         except Exception as e:
             raise DriverException(e.__class__.__name__, str(e)) from None
-        return Element(by=by, locator=locator, web_element=element)
+        return (custom_class or Element)(by=by, locator=locator, web_element=element)
 
-    def find_elements(self, locator, by=By.CSS_SELECTOR):
+    def find_elements(self, locator, *, by=By.CSS_SELECTOR, custom_class=None):
         by = check_if_by_should_be_xpath(by=by, locator=locator)
         elements = self.driver.find_elements(by=by, value=locator)
-        return [Element(by=by, locator=locator, web_element=element) for element in elements]
+        return [(custom_class or Element)(by=by, locator=locator, web_element=element) for element in elements]
 
     def get_xpath_results_from_js(self, xpath, attribute, result_type="ORDERED_NODE_ITERATOR_TYPE"):
         """ A standard JavaScript statement block that executes the provided XPath and returns the results as a list.
@@ -198,15 +204,15 @@ class PageComponent(DOMObject):
         timeout = self.default_timeout if timeout is None else timeout
         self.parent.wait_until_not_visible(locator=self.locator, by=self.by, timeout=timeout)
 
-    def find_element(self, locator, *, by=By.CSS_SELECTOR, wait=True, timeout: int=None, visible=True):
+    def find_element(self, locator, *, by=By.CSS_SELECTOR, wait=True, timeout=None, visible=True, custom_class=None):
         """ Invokes find_element against the root Element, which will only search from that DOM element downward
         instead of throughout the entire DOM."""
         if wait and self.waits_enabled:
             self.wait_for_element(by=by, locator=locator, timeout=timeout, visible=visible)
-        return self.get().find_element(by=by, value=locator)
+        return self.get().find_element(by=by, value=locator, custom_class=custom_class)
 
-    def find_elements(self, locator, by=By.CSS_SELECTOR):
-        return self.get().find_elements(by=by, value=locator)
+    def find_elements(self, locator, *, by=By.CSS_SELECTOR, custom_class=None):
+        return self.get().find_elements(by=by, value=locator, custom_class=custom_class)
 
     # # #
     # Accessor methods for common methods on the PageComponent's root Element.

@@ -198,6 +198,9 @@ class PageComponent(DOMObject):
         visible = self.visible if visible is None else visible
         return self.parent.element(by=self.by, locator=self.locator, visible=visible)
 
+    def exists(self):
+        return self.parent.element_exists(locator=self.locator, by=self.by)
+
     def wait_for_self(self, *, timeout: int=None):
         """ Built-in wait method that waits for the PageComponent's root element to appear on the page. """
         timeout = self.default_timeout if timeout is None else timeout

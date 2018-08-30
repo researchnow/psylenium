@@ -1,4 +1,5 @@
 import time
+from typing import List
 
 from selenium.webdriver.remote.webdriver import WebElement
 from selenium.webdriver.common.action_chains import ActionChains
@@ -268,6 +269,14 @@ class SelectElement(Element):
     def __init__(self, *, by: str, locator: str, web_element: WebElement, parent=None):
         super().__init__(by=by, locator=locator, web_element=web_element, parent=parent)
         self._select = Select(self._element)
+
+    @property
+    def options(self) -> List[Element]:
+        return self.find_elements("option")
+
+    @property
+    def selected_option(self) -> Element:
+        return self.element("option[selected]:not([disabled])")
 
     def select_text(self, text):
         return self._select.select_by_visible_text(text)

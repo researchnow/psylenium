@@ -236,7 +236,7 @@ class Element(object):
         hover = ActionChains(self.driver).move_to_element(self.web_element)
         hover.perform()
 
-    def drag_and_drop(self, percentage, horizontal=True):
+    def slide(self, percentage, horizontal=True):
         if horizontal:
             slider = ActionChains(self.driver).click_and_hold(self.web_element).move_by_offset(percentage, 0).release()
         else:

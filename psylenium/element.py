@@ -236,6 +236,10 @@ class Element(object):
         hover = ActionChains(self.driver).move_to_element(self.web_element)
         hover.perform()
 
+    def slide(self, percentage):
+        slider = ActionChains(self.driver).click_and_hold(self.web_element).move_by_offset(percentage, 0).release()
+        slider.perform()
+
     def double_click(self):
         chain = ActionChains(self.driver).double_click(self.web_element)
         chain.perform()

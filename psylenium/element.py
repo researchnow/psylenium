@@ -283,7 +283,7 @@ class SelectElement(Element):
 
     @property
     def selected_option(self) -> Element:
-        return self.element("option[selected]:not([disabled])")
+        return self.find_element("option[selected]:not([disabled])")
 
     def select_text(self, text):
         return self._select.select_by_visible_text(text)
